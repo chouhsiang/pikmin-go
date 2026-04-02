@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iOS 座標模擬</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <section class="sidebar-section">
+        <h2>目前座標</h2>
+        <label for="inputCoords">GPS 座標（緯度, 經度）</label>
+        <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
+        <div class="sidebar-actions-stack">
+          <button type="button" class="btn" id="btnMove">移動</button>
+          <button type="button" class="btn secondary" id="btnRecenter">回到現實位置</button>
+        </div>
+      </section>
+      <section class="sidebar-section">
+        <h2>定時移動</h2>
+        <label>時速 (km/h)</label>
+        <input type="number" id="inputSpeed" placeholder="18" min="0" step="1" value="18" />
+        <p class="speed-hint" id="speedHint">約 5.0 m/s（每秒移動距離）</p>
+        <label>持續時間 (分鐘)</label>
+        <input type="number" id="inputDuration" placeholder="60" min="1" step="1" value="60" />
+        <label>方位</label>
+        <select id="inputDir">
+          <option value="N">北</option>
+          <option value="E">東</option>
+          <option value="S">南</option>
+          <option value="W">西</option>
+        </select>
+        <div class="row" style="margin-top:8px;">
+          <button type="button" class="btn" id="btnStart">開始</button>
+          <button type="button" class="btn danger" id="btnStop" disabled>停止</button>
+        </div>
+      </section>
+    </aside>
+    <div class="right">
+      <header>
+        <h1>iOS 座標模擬</h1>
+        <span class="coords">目前座標：<strong id="cur">--</strong></span>
+        <span id="status" class="status" style="display:none;"></span>
+      </header>
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div class="hint">點選地圖即可將該點設為裝置模擬位置</div>
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
