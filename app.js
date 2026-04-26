@@ -3,6 +3,7 @@
   const API = 'http://localhost:8964/api';
   const curEl = document.getElementById('cur');
   const statusEl = document.getElementById('status');
+  const presetCoords = document.getElementById('presetCoords');
   const inputCoords = document.getElementById('inputCoords');
   const selectTunnel = document.getElementById('selectTunnel');
   const btnRefreshTunnel = document.getElementById('btnRefreshTunnel');
@@ -14,6 +15,7 @@
   const btnRecenter = document.getElementById('btnRecenter');
   const btnStart = document.getElementById('btnStart');
   const btnStop = document.getElementById('btnStop');
+  const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
   // 預設紐約（單欄格式與 placeholder 一致）
   let currentLat = 40.720638;
@@ -34,6 +36,7 @@
   let playbackTimer = null;
   let selectedTunnel = null;
   const tunnelById = Object.create(null);
+  const presetsById = Object.create(null);
 
   const GEO_OPTIONS = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
 
@@ -84,6 +87,47 @@
     setCurrentCoords(lat, lng);
   }
 
+  function renderPresetOptions(items) {
+    for (const k in presetsById) delete presetsById[k];
+    presetCoords.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = '請選擇座標';
+    presetCoords.appendChild(first);
+
+    (items || []).forEach(function (item, idx) {
+      const id = 'preset-' + String(idx);
+      presetsById[id] = item;
+      const op = document.createElement('option');
+      op.value = id;
+      op.textContent = item.name;
+      presetCoords.appendChild(op);
+    });
+  }
+
+  async function fetchPresetLocations() {
+    try {
+      const r = await fetch('./locations.json');
+      const data = await r.json().catch(function () { return []; });
+      if (!r.ok || !Array.isArray(data)) throw new Error('invalid locations');
+      const list = data
+        .map(function (x) {
+          return {
+            name: String(x.name || ''),
+            lat: Number(x.lat),
+            lng: Number(x.lng),
+          };
+        })
+        .filter(function (x) {
+          return x.name && Number.isFinite(x.lat) && Number.isFinite(x.lng);
+        });
+      renderPresetOptions(list);
+    } catch (e) {
+      renderPresetOptions([]);
+      showStatus(false, '無法載入座標清單');
+    }
+  }
+
   function isIpAddress(text) {
     const s = String(text || '').trim();
     if (!s) return false;
@@ -100,6 +144,23 @@
     return null;
   }
 
+  function getLastTunnelHost() {
+    try {
+      return localStorage.getItem(LAST_TUNNEL_HOST_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveLastTunnelHost(host) {
+    if (!host) return;
+    try {
+      localStorage.setItem(LAST_TUNNEL_HOST_KEY, String(host));
+    } catch (e) {
+      // ignore storage error
+    }
+  }
+
   function renderTunnelOptions(items) {
     for (const k in tunnelById) delete tunnelById[k];
     selectTunnel.innerHTML = '';
@@ -111,6 +172,8 @@
       selectedTunnel = null;
       return;
     }
+    let rememberedId = '';
+    const rememberedHost = getLastTunnelHost();
     items.forEach(function (item, idx) {
       const id = item.udid + '::' + String(idx);
       tunnelById[id] = item;
@@ -119,9 +182,13 @@
       op.value = id;
       op.textContent = kind + ' / ' + item.iface;
       selectTunnel.appendChild(op);
+      if (!rememberedId && rememberedHost && item.host === rememberedHost) {
+        rememberedId = id;
+      }
     });
-    selectTunnel.value = Object.keys(tunnelById)[0];
+    selectTunnel.value = rememberedId || Object.keys(tunnelById)[0];
     selectedTunnel = tunnelById[selectTunnel.value] || null;
+    if (selectedTunnel) saveLastTunnelHost(selectedTunnel.host);
   }
 
   async function fetchTunneldDevices() {
@@ -416,9 +483,17 @@
 
   selectTunnel.addEventListener('change', function () {
     selectedTunnel = tunnelById[selectTunnel.value] || null;
+    if (selectedTunnel) saveLastTunnelHost(selectedTunnel.host);
   });
   btnRefreshTunnel.addEventListener('click', function () {
     fetchTunneldDevices();
+  });
+  presetCoords.addEventListener('change', function () {
+    const selected = presetsById[presetCoords.value];
+    if (!selected) return;
+    updateMarker(selected.lat, selected.lng);
+    map.setView([selected.lat, selected.lng], Math.max(map.getZoom(), 15));
+    setLocation(selected.lat, selected.lng);
   });
 
   function updateSpeedHint() {
@@ -434,6 +509,7 @@
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
   updateMarker(currentLat, currentLng);
   updateSpeedHint();
+  fetchPresetLocations();
   fetchLocation().then(function () {
     fetchTunneldDevices();
     if (!navigator.geolocation) return;
