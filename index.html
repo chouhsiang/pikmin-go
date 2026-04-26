@@ -12,6 +12,11 @@
     <aside class="sidebar">
       <section class="sidebar-section">
         <h2>目前座標</h2>
+        <label for="selectTunnel">tunneld 設備</label>
+        <select id="selectTunnel"></select>
+        <div class="sidebar-actions-stack">
+          <button type="button" class="btn secondary" id="btnRefreshTunnel">重新整理設備</button>
+        </div>
         <label for="inputCoords">GPS 座標（緯度, 經度）</label>
         <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
         <div class="sidebar-actions-stack">

@@ -4,6 +4,8 @@
   const curEl = document.getElementById('cur');
   const statusEl = document.getElementById('status');
   const inputCoords = document.getElementById('inputCoords');
+  const selectTunnel = document.getElementById('selectTunnel');
+  const btnRefreshTunnel = document.getElementById('btnRefreshTunnel');
   const inputSpeed = document.getElementById('inputSpeed');
   const inputDir = document.getElementById('inputDir');
   const inputDuration = document.getElementById('inputDuration');
@@ -30,6 +32,8 @@
   const playbackLayer = L.layerGroup().addTo(map); // 定時移動：依 GPX 每秒標一個軌跡點（無折線）
 
   let playbackTimer = null;
+  let selectedTunnel = null;
+  const tunnelById = Object.create(null);
 
   const GEO_OPTIONS = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
 
@@ -80,6 +84,75 @@
     setCurrentCoords(lat, lng);
   }
 
+  function isIpAddress(text) {
+    const s = String(text || '').trim();
+    if (!s) return false;
+    const isIpv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(s);
+    const isIpv6 = /^[0-9a-fA-F:]+$/.test(s) && s.indexOf(':') !== -1;
+    return isIpv4 || isIpv6;
+  }
+
+  function getSelectedTunnelOrNotify() {
+    if (selectedTunnel && selectedTunnel.host && Number.isFinite(selectedTunnel.port)) {
+      return selectedTunnel;
+    }
+    showStatus(false, '請先選擇 tunneld 設備');
+    return null;
+  }
+
+  function renderTunnelOptions(items) {
+    for (const k in tunnelById) delete tunnelById[k];
+    selectTunnel.innerHTML = '';
+    if (!items || items.length === 0) {
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '找不到設備';
+      selectTunnel.appendChild(empty);
+      selectedTunnel = null;
+      return;
+    }
+    items.forEach(function (item, idx) {
+      const id = item.udid + '::' + String(idx);
+      tunnelById[id] = item;
+      const kind = isIpAddress(item.iface) ? '無線' : '有線';
+      const op = document.createElement('option');
+      op.value = id;
+      op.textContent = kind + ' / ' + item.iface;
+      selectTunnel.appendChild(op);
+    });
+    selectTunnel.value = Object.keys(tunnelById)[0];
+    selectedTunnel = tunnelById[selectTunnel.value] || null;
+  }
+
+  async function fetchTunneldDevices() {
+    try {
+      const r = await fetch(API + '/tunneld');
+      const data = await r.json().catch(function () { return null; });
+      if (!r.ok || !data || typeof data !== 'object') {
+        throw new Error('invalid tunneld response');
+      }
+      const list = [];
+      Object.keys(data).forEach(function (udid) {
+        const tunnels = Array.isArray(data[udid]) ? data[udid] : [];
+        tunnels.forEach(function (t) {
+          const host = t['tunnel-address'];
+          const port = Number(t['tunnel-port']);
+          const iface = String(t.interface || '');
+          if (!host || !Number.isFinite(port)) return;
+          list.push({ udid: udid, host: host, port: port, iface: iface });
+        });
+      });
+      renderTunnelOptions(list);
+      if (list.length > 0) {
+        showStatus(true, '已載入 ' + list.length + ' 個設備');
+        setTimeout(function () { statusEl.style.display = 'none'; }, 2000);
+      }
+    } catch (e) {
+      renderTunnelOptions([]);
+      showStatus(false, '無法取得 tunneld 設備');
+    }
+  }
+
   async function fetchLocation() {
     try {
       const r = await fetch(API + '/location');
@@ -106,11 +179,18 @@
   }
 
   async function setLocation(lat, lng) {
+    const tunnel = getSelectedTunnelOrNotify();
+    if (!tunnel) return;
     try {
       const r = await fetch(API + '/location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify({
+          lat: lat,
+          lng: lng,
+          rsd_host: tunnel.host,
+          rsd_port: tunnel.port,
+        }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -268,6 +348,8 @@
 
   // 定時移動：前端產生 GPX，後端只負責寫檔並交 pymobiledevice3 播放
   async function startRoute() {
+    const tunnel = getSelectedTunnelOrNotify();
+    if (!tunnel) return;
     const speed = parseFloat(inputSpeed.value);
     if (!Number.isFinite(speed) || speed <= 0) {
       showStatus(false, '請輸入有效時速 (km/h)');
@@ -292,7 +374,11 @@
       const r = await fetch(API + '/route/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gpx: route.gpx }),
+        body: JSON.stringify({
+          gpx: route.gpx,
+          rsd_host: tunnel.host,
+          rsd_port: tunnel.port,
+        }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -328,6 +414,13 @@
     stopRoute();
   });
 
+  selectTunnel.addEventListener('change', function () {
+    selectedTunnel = tunnelById[selectTunnel.value] || null;
+  });
+  btnRefreshTunnel.addEventListener('click', function () {
+    fetchTunneldDevices();
+  });
+
   function updateSpeedHint() {
     const s = parseFloat(inputSpeed.value);
     if (Number.isFinite(s) && s >= 0) {
@@ -342,6 +435,7 @@
   updateMarker(currentLat, currentLng);
   updateSpeedHint();
   fetchLocation().then(function () {
+    fetchTunneldDevices();
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       function (pos) {
