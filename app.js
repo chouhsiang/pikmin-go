@@ -67,18 +67,112 @@
     syncCoordsUI();
   }
 
-  /** 解析「緯度, 經度」字串，回傳 { lat, lng } 或 null */
+  /**
+   * 解析各種格式的「緯度, 經度」字串，回傳 { lat, lng } 或 null
+   *
+   * 支援格式：
+   *   DD  (十進位度數)
+   *     25.006003, 121.454933          逗號（有無空格皆可）
+   *     (25.006003, 121.454933)        有括號
+   *     25.006003; 121.454933          分號分隔
+   *     25.006003 121.454933           空白分隔
+   *     N25.006003 E121.454933         方位字母在前
+   *     25.006003N 121.454933E         方位字母在後
+   *     N 25.006003, E 121.454933      方位+空白+數字
+   *     25.006003°N 121.454933°E       帶度符號
+   *   DDM (度分)
+   *     N25° 0.36018' E121° 27.2960'
+   *     25° 0.36018'N 121° 27.2960'E
+   *   DMS (度分秒)
+   *     N25°0'21.61" E121°27'17.76"
+   *     25°0'21.61"N 121°27'17.76"E
+   *     N25° 0' 21.61" E121° 27' 17.76"
+   *     25° 0' 21.61" N, 121° 27' 17.76" E
+   *   其他
+   *     geo:25.006003,121.454933       geo URI
+   *     @25.006003,121.454933          Google Maps URL 參數
+   */
   function parseCoordPair(text) {
-    const parts = String(text || '')
-      .trim()
-      .split(',')
-      .map(function (s) { return s.trim(); })
-      .filter(Boolean);
-    if (parts.length < 2) return null;
-    const lat = parseFloat(parts[0]);
-    const lng = parseFloat(parts[1]);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { lat: lat, lng: lng };
+    let s = String(text || '').trim();
+    if (!s) return null;
+
+    // 去掉已知前綴
+    s = s.replace(/^geo:/i, '').replace(/^@/, '').trim();
+
+    // 正規化：括號→空白、各種度分秒 Unicode 符號→ASCII
+    s = s
+      .replace(/[()[\]{}]/g, ' ')
+      .replace(/[˚º]/g, '°')               // ˚ º → °
+      .replace(/[′‘’ʹ＇]/g, "'")  // ′ ' ' ʹ ＇ → '
+      .replace(/[″“”＂]/g, '"')         // ″ " " ＂ → "
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // 將一段不含方位字母的座標字串轉成十進位度數
+    function toDecimal(seg) {
+      seg = (seg || '').trim();
+      // DMS: 25°0'21.61"  (秒號可省略)
+      var m = seg.match(/^(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'\s*(\d+(?:\.\d+)?)"?$/);
+      if (m) return +m[1] + +m[2] / 60 + +m[3] / 3600;
+      // DDM: 25°0.36018'
+      m = seg.match(/^(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'$/);
+      if (m) return +m[1] + +m[2] / 60;
+      // DD: 25.006003 或 25.006003°
+      m = seg.match(/^(-?\d+(?:\.\d+)?)°?$/);
+      if (m) return +m[1];
+      return null;
+    }
+
+    function applyDir(v, dir) {
+      return (dir === 'S' || dir === 'W') ? -Math.abs(v) : v;
+    }
+
+    // 方位字母解析時，逗號/分號視同空白
+    var sd = s.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // 方位在前：N25.006 E121.454 | N25°0'21.61" E121°27'17.76"
+    var m = sd.match(/^([NS])\s*([\d°'". ]+?)\s*([EW])\s*([\d°'". ]+?)\s*$/i);
+    if (m) {
+      var lat = toDecimal(m[2].trim());
+      var lng = toDecimal(m[4].trim());
+      if (lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat: applyDir(lat, m[1].toUpperCase()), lng: applyDir(lng, m[3].toUpperCase()) };
+      }
+    }
+
+    // 方位在後：25.006N 121.454E | 25°0'21.61"N 121°27'17.76"E
+    m = sd.match(/^([\d°'". ]+?)\s*([NS])\s*([\d°'". ]+?)\s*([EW])\s*$/i);
+    if (m) {
+      var lat = toDecimal(m[1].trim());
+      var lng = toDecimal(m[3].trim());
+      if (lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat: applyDir(lat, m[2].toUpperCase()), lng: applyDir(lng, m[4].toUpperCase()) };
+      }
+    }
+
+    // 逗號或分號分隔（以第一個為準）
+    var sepIdx = s.search(/[,;]/);
+    if (sepIdx !== -1) {
+      var p1 = s.slice(0, sepIdx).trim();
+      var p2 = s.slice(sepIdx + 1).trim();
+      var lat = toDecimal(p1);
+      var lng = toDecimal(p2);
+      if (lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat: lat, lng: lng };
+      }
+    }
+
+    // 空白分隔的兩個純數字
+    var parts = s.split(' ').filter(Boolean);
+    if (parts.length === 2) {
+      var lat = toDecimal(parts[0]);
+      var lng = toDecimal(parts[1]);
+      if (lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat: lat, lng: lng };
+      }
+    }
+
+    return null;
   }
 
   function updateMarker(lat, lng) {
@@ -180,7 +274,7 @@
       const kind = isIpAddress(item.iface) ? '無線' : '有線';
       const op = document.createElement('option');
       op.value = id;
-      op.textContent = kind + ' / ' + item.iface;
+      op.textContent = item.iface === '192.168.50.67' ? '阿暖手機' : kind + ' / ' + item.iface;
       selectTunnel.appendChild(op);
       if (!rememberedId && rememberedHost && item.host === rememberedHost) {
         rememberedId = id;
@@ -285,13 +379,17 @@
   });
 
   // 移動：依輸入的「緯度, 經度」送出
-  btnMove.addEventListener('click', function () {
+  function doMove() {
     const pair = parseCoordPair(inputCoords.value);
     if (pair) {
       setLocation(pair.lat, pair.lng);
     } else {
       showStatus(false, '請輸入有效 GPS 座標，例如 40.720638, -74.000816');
     }
+  }
+  btnMove.addEventListener('click', doMove);
+  inputCoords.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doMove();
   });
 
   // 以瀏覽器真實定位更新標記與地圖（不會自動寫入 iPhone，需再按「移動」或點地圖）
@@ -505,6 +603,13 @@
   }
   inputSpeed.addEventListener('input', updateSpeedHint);
   inputSpeed.addEventListener('change', updateSpeedHint);
+
+  var sidebar = document.querySelector('.sidebar');
+  var sidebarToggle = document.getElementById('sidebarToggle');
+  sidebarToggle.addEventListener('click', function () {
+    var collapsed = sidebar.classList.toggle('collapsed');
+    sidebarToggle.setAttribute('data-tooltip', collapsed ? '展開側欄' : '收合側欄');
+  });
 
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
   updateMarker(currentLat, currentLng);
