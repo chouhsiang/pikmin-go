@@ -401,8 +401,7 @@
     navigator.geolocation.getCurrentPosition(
       function (pos) {
         applyGeolocationPosition(pos);
-        showStatus(true, '已對準現實位置');
-        setTimeout(function () { statusEl.style.display = 'none'; }, 2500);
+        setLocation(pos.coords.latitude, pos.coords.longitude);
       },
       function () {
         showStatus(false, '無法取得現實位置，請允許定位權限');
@@ -606,7 +605,53 @@
 
   var sidebar = document.querySelector('.sidebar');
   var sidebarToggle = document.getElementById('sidebarToggle');
+
+  var appTooltip = document.createElement('div');
+  appTooltip.className = 'app-tooltip';
+  document.body.appendChild(appTooltip);
+
+  function showSidebarTooltip() {
+    var text = sidebarToggle.getAttribute('data-tooltip');
+    var rect = sidebarToggle.getBoundingClientRect();
+    appTooltip.textContent = text;
+    appTooltip.style.opacity = '0';
+    appTooltip.style.display = 'block';
+    var tw = appTooltip.offsetWidth;
+    var th = appTooltip.offsetHeight;
+    if (sidebar.classList.contains('collapsed')) {
+      appTooltip.style.left = (rect.right + 8) + 'px';
+      appTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+    } else {
+      appTooltip.style.left = rect.left + 'px';
+      appTooltip.style.top = (rect.top - th - 6) + 'px';
+    }
+    appTooltip.style.opacity = '1';
+  }
+
+  function hideSidebarTooltip() {
+    appTooltip.style.opacity = '0';
+    appTooltip.style.display = 'none';
+  }
+
+  document.querySelectorAll('.btn-icon[data-tooltip]').forEach(function (el) {
+    el.addEventListener('mouseenter', function () {
+      var rect = el.getBoundingClientRect();
+      appTooltip.textContent = el.getAttribute('data-tooltip');
+      appTooltip.style.display = 'block';
+      appTooltip.style.opacity = '0';
+      var tw = appTooltip.offsetWidth;
+      var th = appTooltip.offsetHeight;
+      appTooltip.style.left = rect.left + 'px';
+      appTooltip.style.top = (rect.top - th - 6) + 'px';
+      appTooltip.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', hideSidebarTooltip);
+  });
+
+  sidebarToggle.addEventListener('mouseenter', showSidebarTooltip);
+  sidebarToggle.addEventListener('mouseleave', hideSidebarTooltip);
   sidebarToggle.addEventListener('click', function () {
+    hideSidebarTooltip();
     var collapsed = sidebar.classList.toggle('collapsed');
     sidebarToggle.setAttribute('data-tooltip', collapsed ? '展開側欄' : '收合側欄');
   });
