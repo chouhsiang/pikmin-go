@@ -259,6 +259,90 @@ html, body {
 .tab-panel.active { display: block; }
 .nav-panel { display: none; }
 .nav-panel.active { display: block; }
+.country-user-tz {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 10px;
+  font-size: 0.72rem;
+  color: #52525b;
+  border-bottom: 1px solid #27272a;
+  margin-bottom: 10px;
+}
+.country-tz-name {
+  flex: 1;
+  color: #71717a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.country-user-time {
+  font-variant-numeric: tabular-nums;
+  color: #a1a1aa;
+}
+.country-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.country-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #3f3f46;
+  background: #27272a;
+  cursor: pointer;
+  text-align: left;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.country-item:hover { background: #3f3f46; }
+.country-item.current {
+  background: #1e2d3d;
+  border-color: #2563eb;
+  cursor: default;
+}
+.country-item.current:hover { background: #1e2d3d; }
+.country-item.current .country-diff {
+  color: #60a5fa;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+.country-name {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: #e4e4e7;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.country-name small {
+  font-size: 0.7rem;
+  color: #71717a;
+}
+.country-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.country-diff {
+  font-size: 0.7rem;
+  color: #71717a;
+}
+.country-time {
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  font-variant-numeric: tabular-nums;
+}
+.coords-block {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #27272a;
+  margin-bottom: 16px;
+}
 .pill-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .pill-btn {
   padding: 4px 10px;

@@ -616,7 +616,6 @@
       btn.classList.add('active');
       const panel = document.getElementById('panel-' + btn.dataset.tab);
       if (panel) panel.classList.add('active');
-      if (btn.dataset.tab === 'manual') inputCoords.focus();
     });
   });
 
@@ -668,8 +667,13 @@
       appTooltip.style.opacity = '0';
       var tw = appTooltip.offsetWidth;
       var th = appTooltip.offsetHeight;
-      appTooltip.style.left = rect.left + 'px';
-      appTooltip.style.top = (rect.top - th - 6) + 'px';
+      if (el.getAttribute('data-tooltip-position') === 'right') {
+        appTooltip.style.left = (rect.right + 8) + 'px';
+        appTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+      } else {
+        appTooltip.style.left = rect.left + 'px';
+        appTooltip.style.top = (rect.top - th - 6) + 'px';
+      }
       appTooltip.style.opacity = '1';
     });
     el.addEventListener('mouseleave', hideSidebarTooltip);
@@ -688,6 +692,125 @@
       }
     });
   });
+
+  // ── 國家分頁 ──────────────────────────────────────────────────────────────
+  const countryPanel = document.getElementById('panel-country');
+
+  const COUNTRIES = [
+    { name: '美國', sub: '紐約', tz: 'America/New_York', lat: 40.7128, lng: -74.0060 },
+    { name: '巴拉圭', sub: null, tz: 'America/Asuncion', lat: -25.2867, lng: -57.6470 },
+    { name: '紐西蘭', sub: null, tz: 'Pacific/Auckland', lat: -36.8485, lng: 174.7633 },
+    { name: '義大利', sub: null, tz: 'Europe/Rome', lat: 41.9028, lng: 12.4964 },
+  ];
+
+  function getUtcOffsetMin(tz) {
+    const now = new Date();
+    const a = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+    const b = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+    return Math.round((a - b) / 60000);
+  }
+
+  function formatDiff(min) {
+    if (min === 0) return '±0h';
+    const sign = min > 0 ? '+' : '-';
+    const abs = Math.abs(min);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    return sign + h + (m ? ':' + String(m).padStart(2, '0') : '') + 'h';
+  }
+
+  function fmtTime(tz) {
+    return new Date().toLocaleTimeString('zh-TW', {
+      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+  }
+
+  const TZ_ZH = {
+    'Asia/Taipei':          { name: '台灣',     sub: '台北' },
+    'Asia/Tokyo':           { name: '日本',     sub: '東京' },
+    'Asia/Shanghai':        { name: '中國',     sub: '上海' },
+    'Asia/Hong_Kong':       { name: '香港',     sub: null },
+    'Asia/Macau':           { name: '澳門',     sub: null },
+    'Asia/Seoul':           { name: '韓國',     sub: '首爾' },
+    'Asia/Singapore':       { name: '新加坡',   sub: null },
+    'Asia/Bangkok':         { name: '泰國',     sub: '曼谷' },
+    'Asia/Kuala_Lumpur':    { name: '馬來西亞', sub: '吉隆坡' },
+    'Asia/Jakarta':         { name: '印尼',     sub: '雅加達' },
+    'Asia/Manila':          { name: '菲律賓',   sub: '馬尼拉' },
+    'Asia/Kolkata':         { name: '印度',     sub: '孟買' },
+    'Asia/Dubai':           { name: '阿聯酋',   sub: '杜拜' },
+    'America/New_York':     { name: '美國',     sub: '紐約' },
+    'America/Los_Angeles':  { name: '美國',     sub: '洛杉磯' },
+    'America/Chicago':      { name: '美國',     sub: '芝加哥' },
+    'America/Denver':       { name: '美國',     sub: '丹佛' },
+    'America/Asuncion':     { name: '巴拉圭',   sub: '亞松森' },
+    'America/Sao_Paulo':    { name: '巴西',     sub: '聖保羅' },
+    'Europe/London':        { name: '英國',     sub: '倫敦' },
+    'Europe/Paris':         { name: '法國',     sub: '巴黎' },
+    'Europe/Berlin':        { name: '德國',     sub: '柏林' },
+    'Europe/Rome':          { name: '義大利',   sub: '羅馬' },
+    'Europe/Madrid':        { name: '西班牙',   sub: '馬德里' },
+    'Australia/Sydney':     { name: '澳洲',     sub: '雪梨' },
+    'Pacific/Auckland':     { name: '紐西蘭',   sub: '奧克蘭' },
+  };
+
+  function buildCountryPanel() {
+    countryPanel.innerHTML = '';
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const userOffMin = getUtcOffsetMin(userTz);
+
+    const tzZh = TZ_ZH[userTz];
+    const tzParts = userTz.split('/');
+    const userCity = tzZh ? tzZh.name : tzParts[tzParts.length - 1].replace(/_/g, ' ');
+    const userSub  = tzZh ? tzZh.sub  : userTz;
+
+    const allEntries = COUNTRIES.map(function (c) { return Object.assign({}, c, { isUser: false }); });
+    allEntries.push({ name: userCity, sub: userSub, tz: userTz, lat: null, lng: null, isUser: true });
+    allEntries.sort(function (a, b) { return getUtcOffsetMin(a.tz) - getUtcOffsetMin(b.tz); });
+
+    const list = document.createElement('div');
+    list.className = 'country-list';
+
+    allEntries.forEach(function (c) {
+      const diff = formatDiff(getUtcOffsetMin(c.tz) - userOffMin);
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'country-item' + (c.isUser ? ' current' : '');
+      if (!c.isUser) {
+        item.dataset.lat = String(c.lat);
+        item.dataset.lng = String(c.lng);
+      }
+      item.innerHTML =
+        '<span class="country-name">' + c.name + (c.sub ? '<small>' + c.sub + '</small>' : '') + '</span>' +
+        '<span class="country-info">' +
+          '<span class="country-diff">' + (c.isUser ? '目前位置' : diff) + '</span>' +
+          '<span class="country-time" data-tz="' + c.tz + '">' + fmtTime(c.tz) + '</span>' +
+        '</span>';
+      list.appendChild(item);
+    });
+
+    list.addEventListener('click', function (e) {
+      const item = e.target.closest('.country-item');
+      if (!item || item.classList.contains('current')) return;
+      const lat = parseFloat(item.dataset.lat);
+      const lng = parseFloat(item.dataset.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      updateMarker(lat, lng);
+      map.setView([lat, lng], Math.max(map.getZoom(), 10));
+      setLocation(lat, lng);
+    });
+
+    countryPanel.appendChild(list);
+  }
+
+  function tickCountryTimes() {
+    countryPanel.querySelectorAll('.country-time[data-tz]').forEach(function (el) {
+      el.textContent = fmtTime(el.dataset.tz);
+    });
+  }
+
+  buildCountryPanel();
+  setInterval(tickCountryTimes, 60000);
 
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
   updateMarker(currentLat, currentLng);

@@ -17,7 +17,7 @@
         <div class="row">
           <label for="selectTunnel">設備</label>
           <select id="selectTunnel"></select>
-          <button type="button" class="btn-icon" id="btnRefreshTunnel" data-tooltip="重新整理設備">
+          <button type="button" class="btn-icon" id="btnRefreshTunnel" data-tooltip="重新整理設備" data-tooltip-position="right">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
               <path d="M21 3v5h-5"/>
@@ -51,16 +51,7 @@
       <div class="sidebar-body">
       <div class="sidebar-content">
       <section class="sidebar-section nav-panel active" data-nav-panel="mushroom">
-        <div class="seg-ctrl">
-          <button class="seg-btn active" data-tab="goodspot">好菇點</button>
-          <button class="seg-btn" data-tab="preset">純點</button>
-          <button class="seg-btn" data-tab="manual">手動輸入</button>
-        </div>
-        <div class="tab-panel active" id="panel-goodspot"></div>
-        <div class="tab-panel" id="panel-preset">
-          <div id="presetPills" class="pill-list"></div>
-        </div>
-        <div class="tab-panel" id="panel-manual">
+        <div class="coords-block">
           <label for="inputCoords">GPS 座標（緯度, 經度）</label>
           <div class="row">
             <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
@@ -72,6 +63,16 @@
             </button>
           </div>
         </div>
+        <div class="seg-ctrl">
+          <button class="seg-btn active" data-tab="country">國家</button>
+          <button class="seg-btn" data-tab="preset">純點</button>
+          <button class="seg-btn" data-tab="postcard">美明信片</button>
+        </div>
+        <div class="tab-panel active" id="panel-country"></div>
+        <div class="tab-panel" id="panel-preset">
+          <div id="presetPills" class="pill-list"></div>
+        </div>
+        <div class="tab-panel" id="panel-postcard"></div>
       </section>
       <section class="sidebar-section nav-panel" data-nav-panel="flower">
         <div class="input-cols">
