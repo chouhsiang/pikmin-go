@@ -30,9 +30,7 @@
       <div class="sidebar-main">
       <nav class="sidebar-nav">
         <div class="nav-item active" data-nav="mushroom">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 160 400 290">
-            <path d="m 315.56 828.85 c 19.01 -1.958 41.1 -2.543 54.718 -17.932 16.372 -19.439 15.16 -48.09 5.906 -70.44 -14.717 -37.35 -46.17 -65.24 -80.56 -84.58 -30.619 -16.636 -65.32 -25.519 -100.26 -25.03 l -0.005 -0.013 c -61.09 1.682 -121.05 32.842 -156.79 82.34 -16.28 23 -26.908 52.878 -18.586 80.82 4.489 14.02 15.507 25.343 29.954 28.765 85.28 10.849 180.46 14.597 265.62 6.07 z m -178.09 40.787 c -12.23 40.35 -22.05 68.24 -20.405 110.65 1.344 17.195 6.122 37.681 23.07 45.857 20.05 9.973 43.47 7.04 65.22 7.744 20.405 -0.223 41.597 0.595 61.01 -6.223 16.247 -8.05 24.924 -26.51 24.726 -44.11 3.961 -42.491 -8.113 -72.16 -19.942 -112.46 z" transform="translate(0 -612.36)" fill="currentColor" stroke="none"/>
-          </svg>
+          <span class="mushroom-icon"></span>
           <span>打菇</span>
         </div>
         <div class="nav-item" data-nav="flower">
@@ -108,6 +106,103 @@
       </div>
     </div>
   </div>
+  <!-- FAB -->
+  <button class="fab" id="btnHelp" aria-label="使用教學">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22"><rect width="256" height="256" fill="none"/><circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><path d="M96,96a32,32,0,1,1,32,32v16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="128" cy="176" r="12" fill="currentColor"/></svg>
+  </button>
+
+  <!-- Help Modal -->
+  <div class="help-overlay" id="helpOverlay">
+    <div class="help-panel">
+      <div class="help-header">
+        <span class="help-title">使用教學</span>
+        <button class="help-close" id="helpClose" aria-label="關閉">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="16" height="16"><rect width="256" height="256" fill="none"/><line x1="200" y1="56" x2="56" y2="200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="56" y1="56" x2="200" y2="200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+        </button>
+      </div>
+      <div class="help-body">
+
+        <div class="help-section">
+          <div class="help-section-label">快速上手</div>
+          <div class="help-steps">
+            <div class="help-step"><span class="help-step-num">1</span><span class="help-step-text">確認 iOS 設備已用 USB 或無線連線，從頂部選單選擇設備</span></div>
+            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">在 GPS 座標欄位貼上座標後按 Enter，或直接點擊地圖任意位置</span></div>
+            <div class="help-step"><span class="help-step-num">3</span><span class="help-step-text">模擬位置立即更新，iOS 裝置的 GPS 同步改變</span></div>
+          </div>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">設備連線</div>
+          <p class="help-p">頂部下拉選單列出所有可用的 iOS 裝置。若列表為空或顯示「找不到設備」：</p>
+          <ul class="help-ul">
+            <li>確認裝置已透過 USB 連線並信任此電腦</li>
+            <li>確認後端服務（tunneld）正在本機執行</li>
+            <li>點擊右側刷新按鈕重新掃描</li>
+          </ul>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">打菇 — 設定模擬座標</div>
+          <div class="help-method"><span class="help-method-tag">手動輸入</span><span class="help-method-desc">在頂部輸入框貼上座標後按 Enter 或點擊 ✈ 送出</span></div>
+          <div class="help-method"><span class="help-method-tag">點擊地圖</span><span class="help-method-desc">在地圖任意位置點擊，即時更新模擬座標</span></div>
+          <div class="help-method"><span class="help-method-tag">回到現實</span><span class="help-method-desc">點擊 ⊙ 按鈕，讀取裝置真實 GPS 並同步至地圖</span></div>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">支援的座標格式</div>
+          <div class="help-code">
+            <span>25.006003, 121.454933</span>
+            <span>N25° 0.36018' E121° 27.2960'</span>
+            <span>N25°0'21.61" E121°27'17.76"</span>
+            <span>geo:25.006003,121.454933</span>
+            <span>@25.006003,121.454933</span>
+          </div>
+          <p class="help-p help-p-sm">Unicode 度分秒符號（˚ º ′ ″ 等）會自動正規化</p>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">國家快選</div>
+          <p class="help-p">顯示各國目前時間與和你所在時區的時差，列表由最早到最晚排序。<span class="help-tag">目前位置</span> 為你目前所在時區。點擊任一國家卡片，地圖會跳轉至該國預設座標並設為模擬位置。</p>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">純點</div>
+          <p class="help-p">從預設座標清單（locations.json）快速選擇常用據點，點擊按鈕立即設定為模擬座標。</p>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">種花 — 自動移動</div>
+          <p class="help-p">讓裝置依指定參數持續移動，適合批次採集路線資源。</p>
+          <div class="help-steps">
+            <div class="help-step"><span class="help-step-num">1</span><span class="help-step-text">設定<strong>時速</strong>（km/h）與<strong>持續時間</strong>（分鐘）</span></div>
+            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">從下拉選單選擇移動<strong>方位</strong>（東／南／西／北）</span></div>
+            <div class="help-step"><span class="help-step-num">3</span><span class="help-step-text">按 ▶ 開始移動，地圖即時標出每秒軌跡；按 ⏸ 可隨時停止</span></div>
+          </div>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">側邊欄</div>
+          <p class="help-p">點擊側邊欄底部的 ‹ 按鈕可將側邊欄收合成細條，讓地圖視野最大化；再次點擊 › 即可展開。</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./app.js"></script>
 </body>

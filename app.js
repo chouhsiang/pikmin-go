@@ -812,6 +812,36 @@
   buildCountryPanel();
   setInterval(tickCountryTimes, 60000);
 
+  // ── 使用教學 FAB ──────────────────────────────────────────────────────────
+  var btnHelp = document.getElementById('btnHelp');
+  var helpOverlay = document.getElementById('helpOverlay');
+
+  btnHelp.addEventListener('mouseenter', function () {
+    var rect = btnHelp.getBoundingClientRect();
+    appTooltip.textContent = '使用教學';
+    appTooltip.style.display = 'block';
+    appTooltip.style.opacity = '0';
+    var tw = appTooltip.offsetWidth;
+    var th = appTooltip.offsetHeight;
+    appTooltip.style.left = (rect.right - tw) + 'px';
+    appTooltip.style.top = (rect.top - th - 6) + 'px';
+    appTooltip.style.opacity = '1';
+  });
+  btnHelp.addEventListener('mouseleave', hideSidebarTooltip);
+  btnHelp.addEventListener('click', function () {
+    hideSidebarTooltip();
+    helpOverlay.classList.add('active');
+  });
+  document.getElementById('helpClose').addEventListener('click', function () {
+    helpOverlay.classList.remove('active');
+  });
+  helpOverlay.addEventListener('click', function (e) {
+    if (e.target === helpOverlay) helpOverlay.classList.remove('active');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') helpOverlay.classList.remove('active');
+  });
+
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
   updateMarker(currentLat, currentLng);
   updateSpeedHint();
