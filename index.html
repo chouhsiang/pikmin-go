@@ -13,11 +13,9 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="sidebar-content">
-      <section class="sidebar-section">
-        <h2>目前座標</h2>
-        <label for="selectTunnel">tunneld 設備</label>
+      <div class="sidebar-header">
         <div class="row">
+          <label for="selectTunnel">設備</label>
           <select id="selectTunnel"></select>
           <button type="button" class="btn-icon" id="btnRefreshTunnel" data-tooltip="重新整理設備">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -28,61 +26,84 @@
             </svg>
           </button>
         </div>
-        <hr>
-        <label for="presetCoords">純點</label>
-        <select id="presetCoords">
-          <option value="">請選擇座標</option>
-        </select>
-        <hr>
-        <label for="inputCoords">GPS 座標（緯度, 經度）</label>
-        <div class="row">
-          <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
-          <button type="button" class="btn-icon" id="btnMove" data-tooltip="移動">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15" fill="currentColor">
-              <path d="M90.34,61.66a8,8,0,0,1,0-11.32l32-32a8,8,0,0,1,11.32,0l32,32a8,8,0,0,1-11.32,11.32L136,43.31V96a8,8,0,0,1-16,0V43.31L101.66,61.66A8,8,0,0,1,90.34,61.66Zm64,132.68L136,212.69V160a8,8,0,0,0-16,0v52.69l-18.34-18.35a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm83.32-72-32-32a8,8,0,0,0-11.32,11.32L212.69,120H160a8,8,0,0,0,0,16h52.69l-18.35,18.34a8,8,0,0,0,11.32,11.32l32-32A8,8,0,0,0,237.66,122.34ZM43.31,136H96a8,8,0,0,0,0-16H43.31l18.35-18.34A8,8,0,0,0,50.34,90.34l-32,32a8,8,0,0,0,0,11.32l32,32a8,8,0,0,0,11.32-11.32Z"/>
-            </svg>
-          </button>
-          <button type="button" class="btn-icon" id="btnRecenter" data-tooltip="回到現實位置">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15" fill="currentColor">
-              <path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"/>
-            </svg>
-          </button>
+      </div>
+      <div class="sidebar-main">
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-nav="mushroom">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 160 400 290">
+            <path d="m 315.56 828.85 c 19.01 -1.958 41.1 -2.543 54.718 -17.932 16.372 -19.439 15.16 -48.09 5.906 -70.44 -14.717 -37.35 -46.17 -65.24 -80.56 -84.58 -30.619 -16.636 -65.32 -25.519 -100.26 -25.03 l -0.005 -0.013 c -61.09 1.682 -121.05 32.842 -156.79 82.34 -16.28 23 -26.908 52.878 -18.586 80.82 4.489 14.02 15.507 25.343 29.954 28.765 85.28 10.849 180.46 14.597 265.62 6.07 z m -178.09 40.787 c -12.23 40.35 -22.05 68.24 -20.405 110.65 1.344 17.195 6.122 37.681 23.07 45.857 20.05 9.973 43.47 7.04 65.22 7.744 20.405 -0.223 41.597 0.595 61.01 -6.223 16.247 -8.05 24.924 -26.51 24.726 -44.11 3.961 -42.491 -8.113 -72.16 -19.942 -112.46 z" transform="translate(0 -612.36)" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>打菇</span>
+        </div>
+        <div class="nav-item" data-nav="flower">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22">
+            <rect width="256" height="256" fill="none"/>
+            <path fill="currentColor" d="M210.35,129.36c-.81-.47-1.7-.92-2.62-1.36.92-.44,1.81-.89,2.62-1.36a40,40,0,1,0-40-69.28c-.81.47-1.65,1-2.48,1.59.08-1,.13-2,.13-3a40,40,0,0,0-80,0c0,.94,0,1.94.13,3-.83-.57-1.67-1.12-2.48-1.59a40,40,0,1,0-40,69.28c.81.47,1.7.92,2.62,1.36-.92.44-1.81.89-2.62,1.36a40,40,0,1,0,40,69.28c.81-.47,1.65-1,2.48-1.59-.08,1-.13,2-.13,2.95a40,40,0,0,0,80,0c0-.94-.05-1.94-.13-2.95.83.57,1.67,1.12,2.48,1.59A39.79,39.79,0,0,0,190.29,204a40.43,40.43,0,0,0,10.42-1.38,40,40,0,0,0,9.64-73.28ZM128,156a28,28,0,1,1,28-28A28,28,0,0,1,128,156Z"/>
+          </svg>
+          <span>種花</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle" data-tooltip="收合側欄">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </button>
+      </nav>
+      <div class="sidebar-body">
+      <div class="sidebar-content">
+      <section class="sidebar-section nav-panel active" data-nav-panel="mushroom">
+        <div class="seg-ctrl">
+          <button class="seg-btn active" data-tab="goodspot">好菇點</button>
+          <button class="seg-btn" data-tab="preset">純點</button>
+          <button class="seg-btn" data-tab="manual">手動輸入</button>
+        </div>
+        <div class="tab-panel active" id="panel-goodspot"></div>
+        <div class="tab-panel" id="panel-preset">
+          <div id="presetPills" class="pill-list"></div>
+        </div>
+        <div class="tab-panel" id="panel-manual">
+          <label for="inputCoords">GPS 座標（緯度, 經度）</label>
+          <div class="row">
+            <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
+            <button type="button" class="btn-icon" id="btnMove" data-tooltip="移動">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path d="M88,224l24-24V176l24-24,48,72,24-24-32-88,33-31A24,24,0,0,0,175,47L144,80,56,48,32,72l72,48L80,144H56L32,168l40,16Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+            </button>
+            <button type="button" class="btn-icon" id="btnRecenter" data-tooltip="回到現實位置">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><line x1="128" y1="240" x2="128" y2="208" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="128" cy="128" r="80" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="128" y1="16" x2="128" y2="48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="16" y1="128" x2="48" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="240" y1="128" x2="208" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="128" cy="128" r="32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+            </button>
+          </div>
         </div>
       </section>
-      <section class="sidebar-section">
-        <h2>定時移動</h2>
-        <label>時速 (km/h)</label>
-        <input type="number" id="inputSpeed" placeholder="18" min="0" step="1" value="18" />
-        <p class="speed-hint" id="speedHint">約 5.0 m/s（每秒移動距離）</p>
-        <label>持續時間 (分鐘)</label>
-        <input type="number" id="inputDuration" placeholder="60" min="1" step="1" value="60" />
+      <section class="sidebar-section nav-panel" data-nav-panel="flower">
+        <div class="input-cols">
+          <div>
+            <label>時速 (km/h) <span class="info-icon" id="speedHint" data-tooltip="約 5.0 m/s（每秒移動距離）"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="16" height="16"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></svg></span></label>
+            <input type="number" id="inputSpeed" placeholder="18" min="0" step="1" value="18" />
+          </div>
+          <div>
+            <label>持續時間 (分鐘)</label>
+            <input type="number" id="inputDuration" placeholder="60" min="1" step="1" value="60" />
+          </div>
+        </div>
         <label>方位</label>
-        <select id="inputDir">
-          <option value="N">北</option>
-          <option value="E">東</option>
-          <option value="S">南</option>
-          <option value="W">西</option>
-        </select>
-        <div class="row" style="margin-top:8px;">
-          <button type="button" class="btn" id="btnStart">開始</button>
-          <button type="button" class="btn danger" id="btnStop" disabled>停止</button>
+        <div class="row">
+          <select id="inputDir">
+            <option value="E" selected>東</option>
+            <option value="S">南</option>
+            <option value="W">西</option>
+            <option value="N">北</option>
+          </select>
+          <button type="button" class="btn-icon" id="btnStart" data-tooltip="開始">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
+          </button>
         </div>
       </section>
       </div>
-      <button class="sidebar-toggle" id="sidebarToggle" data-tooltip="收合側欄">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m15 18-6-6 6-6"/>
-        </svg>
-      </button>
+      </div><!-- /.sidebar-body -->
+      </div><!-- /.sidebar-main -->
     </aside>
     <div class="right">
-      <header>
-        <span class="coords">目前座標：<strong id="cur">--</strong></span>
-        <span id="status" class="status" style="display:none;"></span>
-      </header>
       <div class="map-wrap">
         <div id="map"></div>
-        <div class="hint">點選地圖即可將該點設為裝置模擬位置</div>
       </div>
     </div>
   </div>

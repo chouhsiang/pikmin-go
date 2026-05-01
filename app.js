@@ -1,9 +1,7 @@
 (function () {
   /** 後端 API 固定連到本機（網頁若架在別處如 GitHub Pages 仍可呼叫 localhost） */
   const API = 'http://localhost:8964/api';
-  const curEl = document.getElementById('cur');
-  const statusEl = document.getElementById('status');
-  const presetCoords = document.getElementById('presetCoords');
+  const presetPills = document.getElementById('presetPills');
   const inputCoords = document.getElementById('inputCoords');
   const selectTunnel = document.getElementById('selectTunnel');
   const btnRefreshTunnel = document.getElementById('btnRefreshTunnel');
@@ -14,7 +12,12 @@
   const btnMove = document.getElementById('btnMove');
   const btnRecenter = document.getElementById('btnRecenter');
   const btnStart = document.getElementById('btnStart');
-  const btnStop = document.getElementById('btnStop');
+  const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>';
+  const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>';
+  function setPlayPauseIcon(playing) {
+    btnStart.innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
+    btnStart.setAttribute('data-tooltip', playing ? '停止' : '開始');
+  }
   const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
   // 預設紐約（單欄格式與 placeholder 一致）
@@ -48,17 +51,10 @@
     map.setView([lat, lng], Math.max(map.getZoom(), 13));
   }
 
-  function showStatus(ok, msg) {
-    statusEl.style.display = 'inline';
-    statusEl.textContent = msg;
-    statusEl.className = 'status ' + (ok ? 'ok' : 'err');
-  }
+  function showStatus(_ok, _msg) {}
 
-  /** 表頭「目前座標」與側欄「GPS 座標（緯度, 經度）」共用同一字串 */
   function syncCoordsUI() {
-    const s = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
-    curEl.textContent = s;
-    inputCoords.value = s;
+    inputCoords.value = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
   }
 
   function setCurrentCoords(lat, lng) {
@@ -183,19 +179,16 @@
 
   function renderPresetOptions(items) {
     for (const k in presetsById) delete presetsById[k];
-    presetCoords.innerHTML = '';
-    const first = document.createElement('option');
-    first.value = '';
-    first.textContent = '請選擇座標';
-    presetCoords.appendChild(first);
-
+    presetPills.innerHTML = '';
     (items || []).forEach(function (item, idx) {
       const id = 'preset-' + String(idx);
       presetsById[id] = item;
-      const op = document.createElement('option');
-      op.value = id;
-      op.textContent = item.name;
-      presetCoords.appendChild(op);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pill-btn';
+      btn.dataset.presetId = id;
+      btn.textContent = item.name;
+      presetPills.appendChild(btn);
     });
   }
 
@@ -230,11 +223,21 @@
     return isIpv4 || isIpv6;
   }
 
+  function flashEl(el) {
+    el.classList.remove('flash-err');
+    void el.offsetWidth;
+    el.classList.add('flash-err');
+    el.addEventListener('animationend', function h() {
+      el.classList.remove('flash-err');
+      el.removeEventListener('animationend', h);
+    });
+  }
+
   function getSelectedTunnelOrNotify() {
     if (selectedTunnel && selectedTunnel.host && Number.isFinite(selectedTunnel.port)) {
       return selectedTunnel;
     }
-    showStatus(false, '請先選擇 tunneld 設備');
+    flashEl(selectTunnel);
     return null;
   }
 
@@ -286,6 +289,8 @@
   }
 
   async function fetchTunneldDevices() {
+    const refreshIcon = btnRefreshTunnel.querySelector('svg');
+    refreshIcon.classList.add('spinning');
     try {
       const r = await fetch(API + '/tunneld');
       const data = await r.json().catch(function () { return null; });
@@ -306,11 +311,12 @@
       renderTunnelOptions(list);
       if (list.length > 0) {
         showStatus(true, '已載入 ' + list.length + ' 個設備');
-        setTimeout(function () { statusEl.style.display = 'none'; }, 2000);
       }
     } catch (e) {
       renderTunnelOptions([]);
       showStatus(false, '無法取得 tunneld 設備');
+    } finally {
+      refreshIcon.classList.remove('spinning');
     }
   }
 
@@ -364,7 +370,6 @@
       updateMarker(data.lat, data.lng);
       map.setView([data.lat, data.lng], map.getZoom());
       showStatus(true, '已設定座標');
-      setTimeout(function () { statusEl.style.display = 'none'; }, 3000);
     } catch (e) {
       showStatus(false, '網路錯誤');
       syncCoordsUI();
@@ -384,12 +389,15 @@
     if (pair) {
       setLocation(pair.lat, pair.lng);
     } else {
-      showStatus(false, '請輸入有效 GPS 座標，例如 40.720638, -74.000816');
+      flashEl(inputCoords);
     }
   }
   btnMove.addEventListener('click', doMove);
   inputCoords.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') doMove();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doMove();
+    }
   });
 
   // 以瀏覽器真實定位更新標記與地圖（不會自動寫入 iPhone，需再按「移動」或點地圖）
@@ -496,8 +504,7 @@
     function step() {
       if (i >= latlngs.length) {
         stopPlaybackAnimation();
-        btnStart.disabled = false;
-        btnStop.disabled = true;
+        setPlayPauseIcon(false);
         return;
       }
       const ll = latlngs[i];
@@ -549,11 +556,9 @@
         showStatus(false, data.detail || '啟動路線失敗');
         return;
       }
-      btnStart.disabled = true;
-      btnStop.disabled = false;
+      setPlayPauseIcon(true);
       startPlaybackAnimation(route.latlngs);
       showStatus(true, '已開始定時移動');
-      setTimeout(function () { statusEl.style.display = 'none'; }, 3000);
     } catch (e) {
       showStatus(false, '啟動路線失敗');
     }
@@ -566,16 +571,15 @@
       // ignore
     }
     stopPlaybackAnimation();
-    btnStart.disabled = false;
-    btnStop.disabled = true;
+    setPlayPauseIcon(false);
   }
 
   btnStart.addEventListener('click', function () {
-    startRoute();
-  });
-
-  btnStop.addEventListener('click', function () {
-    stopRoute();
+    if (playbackTimer !== null) {
+      stopRoute();
+    } else {
+      startRoute();
+    }
   });
 
   selectTunnel.addEventListener('change', function () {
@@ -585,19 +589,42 @@
   btnRefreshTunnel.addEventListener('click', function () {
     fetchTunneldDevices();
   });
-  presetCoords.addEventListener('change', function () {
-    const selected = presetsById[presetCoords.value];
+  presetPills.addEventListener('click', function (e) {
+    const btn = e.target.closest('.pill-btn');
+    if (!btn) return;
+    const selected = presetsById[btn.dataset.presetId];
     if (!selected) return;
     updateMarker(selected.lat, selected.lng);
     map.setView([selected.lat, selected.lng], Math.max(map.getZoom(), 15));
     setLocation(selected.lat, selected.lng);
   });
 
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      document.querySelectorAll('.nav-item').forEach(function (i) { i.classList.remove('active'); });
+      document.querySelectorAll('.nav-panel').forEach(function (p) { p.classList.remove('active'); });
+      item.classList.add('active');
+      const panel = document.querySelector('[data-nav-panel="' + item.dataset.nav + '"]');
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.seg-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.seg-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      const panel = document.getElementById('panel-' + btn.dataset.tab);
+      if (panel) panel.classList.add('active');
+      if (btn.dataset.tab === 'manual') inputCoords.focus();
+    });
+  });
+
   function updateSpeedHint() {
     const s = parseFloat(inputSpeed.value);
     if (Number.isFinite(s) && s >= 0) {
       const mps = (s * 1000) / 3600;
-      speedHint.textContent = '約 ' + mps.toFixed(1) + ' m/s（每秒移動距離）';
+      speedHint.setAttribute('data-tooltip', '約 ' + mps.toFixed(1) + ' m/s（每秒移動距離）');
     }
   }
   inputSpeed.addEventListener('input', updateSpeedHint);
@@ -633,7 +660,7 @@
     appTooltip.style.display = 'none';
   }
 
-  document.querySelectorAll('.btn-icon[data-tooltip]').forEach(function (el) {
+  document.querySelectorAll('.btn-icon[data-tooltip], .info-icon[data-tooltip]').forEach(function (el) {
     el.addEventListener('mouseenter', function () {
       var rect = el.getBoundingClientRect();
       appTooltip.textContent = el.getAttribute('data-tooltip');
@@ -654,6 +681,12 @@
     hideSidebarTooltip();
     var collapsed = sidebar.classList.toggle('collapsed');
     sidebarToggle.setAttribute('data-tooltip', collapsed ? '展開側欄' : '收合側欄');
+    sidebar.addEventListener('transitionend', function handler(e) {
+      if (e.propertyName === 'width') {
+        map.invalidateSize();
+        sidebar.removeEventListener('transitionend', handler);
+      }
+    });
   });
 
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
