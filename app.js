@@ -3,6 +3,7 @@
   const API = 'http://localhost:8964/api';
   const presetPills = document.getElementById('presetPills');
   const inputCoords = document.getElementById('inputCoords');
+  const inputCoordsFlower = document.getElementById('inputCoordsFlower');
   const selectTunnel = document.getElementById('selectTunnel');
   const btnRefreshTunnel = document.getElementById('btnRefreshTunnel');
   const inputSpeed = document.getElementById('inputSpeed');
@@ -11,6 +12,8 @@
   const speedHint = document.getElementById('speedHint');
   const btnMove = document.getElementById('btnMove');
   const btnRecenter = document.getElementById('btnRecenter');
+  const btnMoveFlower = document.getElementById('btnMoveFlower');
+  const btnRecenterFlower = document.getElementById('btnRecenterFlower');
   const btnStart = document.getElementById('btnStart');
   const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>';
   const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>';
@@ -21,6 +24,8 @@
   const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
   // 預設紐約（單欄格式與 placeholder 一致）
+  document.getElementById('pikminImg').src = './Pikmin1.png';
+
   let currentLat = 40.720638;
   let currentLng = -74.000816;
   let marker = null;
@@ -38,6 +43,10 @@
 
   let playbackTimer = null;
   let selectedTunnel = null;
+  let routeActive = false;
+  let routeSpeed = 0;
+  let routeDir = 'N';
+  let routeEndTime = 0;
   const tunnelById = Object.create(null);
   const presetsById = Object.create(null);
 
@@ -54,7 +63,9 @@
   function showStatus(_ok, _msg) {}
 
   function syncCoordsUI() {
-    inputCoords.value = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
+    const v = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
+    inputCoords.value = v;
+    inputCoordsFlower.value = v;
   }
 
   function setCurrentCoords(lat, lng) {
@@ -171,9 +182,17 @@
     return null;
   }
 
+  const PIKMIN_ICON = L.divIcon({
+    className: 'pikmin-marker-wrapper',
+    html: '<img class="pikmin-marker-img" src="./Pikmin_walk.png" /><div class="pikmin-marker-dot"></div>',
+    iconSize: [52, 83],
+    iconAnchor: [11, 79],
+    popupAnchor: [0, -79],
+  });
+
   function updateMarker(lat, lng) {
     if (marker) map.removeLayer(marker);
-    marker = L.marker([lat, lng]).addTo(map);
+    marker = L.marker([lat, lng], { icon: PIKMIN_ICON }).addTo(map);
     setCurrentCoords(lat, lng);
   }
 
@@ -346,6 +365,10 @@
   }
 
   async function setLocation(lat, lng) {
+    if (routeActive) {
+      await restartRouteFrom(lat, lng);
+      return;
+    }
     const tunnel = getSelectedTunnelOrNotify();
     if (!tunnel) return;
     try {
@@ -384,24 +407,25 @@
   });
 
   // 移動：依輸入的「緯度, 經度」送出
-  function doMove() {
-    const pair = parseCoordPair(inputCoords.value);
+  function doMoveFrom(inputEl) {
+    const pair = parseCoordPair(inputEl.value);
     if (pair) {
       setLocation(pair.lat, pair.lng);
     } else {
-      flashEl(inputCoords);
+      flashEl(inputEl);
     }
   }
-  btnMove.addEventListener('click', doMove);
+  btnMove.addEventListener('click', function () { doMoveFrom(inputCoords); });
   inputCoords.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      doMove();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); doMoveFrom(inputCoords); }
+  });
+  btnMoveFlower.addEventListener('click', function () { doMoveFrom(inputCoordsFlower); });
+  inputCoordsFlower.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doMoveFrom(inputCoordsFlower); }
   });
 
   // 以瀏覽器真實定位更新標記與地圖（不會自動寫入 iPhone，需再按「移動」或點地圖）
-  btnRecenter.addEventListener('click', function () {
+  function doRecenter() {
     if (!navigator.geolocation) {
       showStatus(false, '此瀏覽器不支援定位');
       return;
@@ -416,7 +440,9 @@
       },
       GEO_OPTIONS
     );
-  });
+  }
+  btnRecenter.addEventListener('click', doRecenter);
+  btnRecenterFlower.addEventListener('click', doRecenter);
 
   /** GPX <time>，與後端原先 strftime UTC 格式一致 */
   function formatGpxTimeUtc(ts) {
@@ -505,6 +531,7 @@
       if (i >= latlngs.length) {
         stopPlaybackAnimation();
         setPlayPauseIcon(false);
+        routeActive = false;
         return;
       }
       const ll = latlngs[i];
@@ -556,6 +583,10 @@
         showStatus(false, data.detail || '啟動路線失敗');
         return;
       }
+      routeActive = true;
+      routeSpeed = speed;
+      routeDir = dir;
+      routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
       startPlaybackAnimation(route.latlngs);
       showStatus(true, '已開始定時移動');
@@ -565,6 +596,7 @@
   }
 
   async function stopRoute() {
+    routeActive = false;
     try {
       await fetch(API + '/route/stop', { method: 'POST' });
     } catch (e) {
@@ -572,6 +604,45 @@
     }
     stopPlaybackAnimation();
     setPlayPauseIcon(false);
+  }
+
+  async function restartRouteFrom(lat, lng) {
+    const remaining = Math.floor(routeEndTime - Date.now() / 1000);
+    if (remaining <= 0) {
+      stopRoute();
+      return;
+    }
+    const tunnel = getSelectedTunnelOrNotify();
+    if (!tunnel) return;
+    let route;
+    try {
+      route = generateRouteGpx(lat, lng, routeSpeed, routeDir, remaining);
+    } catch (e) {
+      showStatus(false, '產生 GPX 失敗');
+      return;
+    }
+    try {
+      await fetch(API + '/route/stop', { method: 'POST' });
+    } catch (e) { /* ignore */ }
+    try {
+      const r = await fetch(API + '/route/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gpx: route.gpx, rsd_host: tunnel.host, rsd_port: tunnel.port }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        showStatus(false, data.detail || '更新路線失敗');
+        return;
+      }
+      routeEndTime = Date.now() / 1000 + remaining;
+      stopPlaybackAnimation();
+      updateMarker(lat, lng);
+      map.setView([lat, lng], map.getZoom());
+      startPlaybackAnimation(route.latlngs);
+    } catch (e) {
+      showStatus(false, '更新路線失敗');
+    }
   }
 
   btnStart.addEventListener('click', function () {
@@ -697,10 +768,43 @@
   const countryPanel = document.getElementById('panel-country');
 
   const COUNTRIES = [
-    { name: '美國', sub: '紐約', tz: 'America/New_York', lat: 40.7128, lng: -74.0060 },
-    { name: '巴拉圭', sub: null, tz: 'America/Asuncion', lat: -25.2867, lng: -57.6470 },
-    { name: '紐西蘭', sub: null, tz: 'Pacific/Auckland', lat: -36.8485, lng: 174.7633 },
-    { name: '義大利', sub: null, tz: 'Europe/Rome', lat: 41.9028, lng: 12.4964 },
+    // ── 亞洲 ──
+    { name: '日本', flag: '🇯🇵', cities: [
+      { sub: '京都', tz: 'Asia/Tokyo', lat: 35.0116, lng: 135.7681 },
+      { sub: '大阪', tz: 'Asia/Tokyo', lat: 34.6937, lng: 135.5023 },
+      { sub: '熊本', tz: 'Asia/Tokyo', lat: 32.8031, lng: 130.7079 },
+      { sub: '小樽', tz: 'Asia/Tokyo', lat: 43.1907, lng: 140.9947 },
+    ]},
+    { name: '香港', flag: '🇭🇰', cities: [
+      { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
+    ]},
+    { name: '新加坡', flag: '🇸🇬', cities: [
+      { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.3521, lng: 103.8198 },
+    ]},
+    { name: '泰國', flag: '🇹🇭', cities: [
+      { sub: '曼谷', tz: 'Asia/Bangkok', lat: 13.7563, lng: 100.5018 },
+      { sub: '清邁', tz: 'Asia/Bangkok', lat: 18.7883, lng:  98.9853 },
+    ]},
+    // ── 歐洲 ──
+    { name: '義大利', flag: '🇮🇹', cities: [
+      { sub: '羅馬',   tz: 'Europe/Rome', lat: 41.9028, lng: 12.4964 },
+      { sub: '米蘭',   tz: 'Europe/Rome', lat: 45.4642, lng:  9.1900 },
+      { sub: '威尼斯', tz: 'Europe/Rome', lat: 45.4408, lng: 12.3155 },
+      { sub: '佛羅倫斯', tz: 'Europe/Rome', lat: 43.7696, lng: 11.2558 },
+      { sub: '那不勒斯', tz: 'Europe/Rome', lat: 40.8518, lng: 14.2681 },
+    ]},
+    // ── 美洲 ──
+    { name: '美國', flag: '🇺🇸', cities: [
+      { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.6062, lng: -122.3321 },
+      { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
+      { sub: '紐約',   tz: 'America/New_York',    lat: 40.7128, lng:  -74.0060 },
+    ]},
+    // ── 大洋洲 ──
+    { name: '紐西蘭', flag: '🇳🇿', cities: [
+      { sub: '奧克蘭', tz: 'Pacific/Auckland', lat: -36.8485, lng: 174.7633 },
+      { sub: '威靈頓', tz: 'Pacific/Auckland', lat: -41.2865, lng: 174.7762 },
+      { sub: '基督城', tz: 'Pacific/Auckland', lat: -43.5321, lng: 172.6362 },
+    ]},
   ];
 
   function getUtcOffsetMin(tz) {
@@ -725,34 +829,45 @@
     });
   }
 
+  const SUN_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/><line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="16.95" y2="7.05"/><line x1="7.05" y1="16.95" x2="4.93" y2="19.07"/></svg>';
+  const MOON_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  function renderTime(tz) {
+    const h = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', hour12: false }), 10);
+    const icon = (h >= 5 && h < 18) ? SUN_ICON : MOON_ICON;
+    return icon + fmtTime(tz);
+  }
+
   const TZ_ZH = {
-    'Asia/Taipei':          { name: '台灣',     sub: '台北' },
-    'Asia/Tokyo':           { name: '日本',     sub: '東京' },
-    'Asia/Shanghai':        { name: '中國',     sub: '上海' },
-    'Asia/Hong_Kong':       { name: '香港',     sub: null },
-    'Asia/Macau':           { name: '澳門',     sub: null },
-    'Asia/Seoul':           { name: '韓國',     sub: '首爾' },
-    'Asia/Singapore':       { name: '新加坡',   sub: null },
-    'Asia/Bangkok':         { name: '泰國',     sub: '曼谷' },
-    'Asia/Kuala_Lumpur':    { name: '馬來西亞', sub: '吉隆坡' },
-    'Asia/Jakarta':         { name: '印尼',     sub: '雅加達' },
-    'Asia/Manila':          { name: '菲律賓',   sub: '馬尼拉' },
-    'Asia/Kolkata':         { name: '印度',     sub: '孟買' },
-    'Asia/Dubai':           { name: '阿聯酋',   sub: '杜拜' },
-    'America/New_York':     { name: '美國',     sub: '紐約' },
-    'America/Los_Angeles':  { name: '美國',     sub: '洛杉磯' },
-    'America/Chicago':      { name: '美國',     sub: '芝加哥' },
-    'America/Denver':       { name: '美國',     sub: '丹佛' },
-    'America/Asuncion':     { name: '巴拉圭',   sub: '亞松森' },
-    'America/Sao_Paulo':    { name: '巴西',     sub: '聖保羅' },
-    'Europe/London':        { name: '英國',     sub: '倫敦' },
-    'Europe/Paris':         { name: '法國',     sub: '巴黎' },
-    'Europe/Berlin':        { name: '德國',     sub: '柏林' },
-    'Europe/Rome':          { name: '義大利',   sub: '羅馬' },
-    'Europe/Madrid':        { name: '西班牙',   sub: '馬德里' },
-    'Australia/Sydney':     { name: '澳洲',     sub: '雪梨' },
-    'Pacific/Auckland':     { name: '紐西蘭',   sub: '奧克蘭' },
+    'Asia/Taipei':          { name: '台灣',     sub: '台北',   flag: '🇹🇼' },
+    'Asia/Tokyo':           { name: '日本',     sub: '東京',   flag: '🇯🇵' },
+    'Asia/Shanghai':        { name: '中國',     sub: '上海',   flag: '🇨🇳' },
+    'Asia/Hong_Kong':       { name: '香港',     sub: null,     flag: '🇭🇰' },
+    'Asia/Macau':           { name: '澳門',     sub: null,     flag: '🇲🇴' },
+    'Asia/Seoul':           { name: '韓國',     sub: '首爾',   flag: '🇰🇷' },
+    'Asia/Singapore':       { name: '新加坡',   sub: null,     flag: '🇸🇬' },
+    'Asia/Bangkok':         { name: '泰國',     sub: '曼谷',   flag: '🇹🇭' },
+    'Asia/Kuala_Lumpur':    { name: '馬來西亞', sub: '吉隆坡', flag: '🇲🇾' },
+    'Asia/Jakarta':         { name: '印尼',     sub: '雅加達', flag: '🇮🇩' },
+    'Asia/Manila':          { name: '菲律賓',   sub: '馬尼拉', flag: '🇵🇭' },
+    'Asia/Kolkata':         { name: '印度',     sub: '孟買',   flag: '🇮🇳' },
+    'Asia/Dubai':           { name: '阿聯酋',   sub: '杜拜',   flag: '🇦🇪' },
+    'America/New_York':     { name: '美國',     sub: '紐約',   flag: '🇺🇸' },
+    'America/Los_Angeles':  { name: '美國',     sub: '洛杉磯', flag: '🇺🇸' },
+    'America/Chicago':      { name: '美國',     sub: '芝加哥', flag: '🇺🇸' },
+    'America/Denver':       { name: '美國',     sub: '丹佛',   flag: '🇺🇸' },
+    'America/Asuncion':     { name: '巴拉圭',   sub: '亞松森', flag: '🇵🇾' },
+    'America/Sao_Paulo':    { name: '巴西',     sub: '聖保羅', flag: '🇧🇷' },
+    'Europe/London':        { name: '英國',     sub: '倫敦',   flag: '🇬🇧' },
+    'Europe/Paris':         { name: '法國',     sub: '巴黎',   flag: '🇫🇷' },
+    'Europe/Berlin':        { name: '德國',     sub: '柏林',   flag: '🇩🇪' },
+    'Europe/Rome':          { name: '義大利',   sub: '羅馬',   flag: '🇮🇹' },
+    'Europe/Madrid':        { name: '西班牙',   sub: '馬德里', flag: '🇪🇸' },
+    'Australia/Sydney':     { name: '澳洲',     sub: '雪梨',   flag: '🇦🇺' },
+    'Pacific/Auckland':     { name: '紐西蘭',   sub: '奧克蘭', flag: '🇳🇿' },
   };
+
+  var CHEVRON_SVG = '<svg class="country-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 
   function buildCountryPanel() {
     countryPanel.innerHTML = '';
@@ -761,39 +876,96 @@
 
     const tzZh = TZ_ZH[userTz];
     const tzParts = userTz.split('/');
-    const userCity = tzZh ? tzZh.name : tzParts[tzParts.length - 1].replace(/_/g, ' ');
-    const userSub  = tzZh ? tzZh.sub  : userTz;
+    const userCountryName = tzZh ? tzZh.name : tzParts[tzParts.length - 1].replace(/_/g, ' ');
+    const userCityName    = tzZh ? tzZh.sub  : userTz;
+    const userFlag        = tzZh ? tzZh.flag : '';
 
-    const allEntries = COUNTRIES.map(function (c) { return Object.assign({}, c, { isUser: false }); });
-    allEntries.push({ name: userCity, sub: userSub, tz: userTz, lat: null, lng: null, isUser: true });
-    allEntries.sort(function (a, b) { return getUtcOffsetMin(a.tz) - getUtcOffsetMin(b.tz); });
+    const groups = COUNTRIES.map(function (c) {
+      return { name: c.name, flag: c.flag, cities: c.cities, isUser: false, isCurrent: false };
+    });
+
+    const matchIdx = COUNTRIES.findIndex(function (c) {
+      return c.cities.some(function (city) { return city.tz === userTz; });
+    });
+    if (matchIdx >= 0) {
+      groups[matchIdx].isCurrent = true;
+    } else {
+      groups.push({
+        name: userCountryName, flag: userFlag,
+        cities: [{ sub: userCityName, tz: userTz, lat: null, lng: null }],
+        isUser: true, isCurrent: true,
+      });
+    }
+
+    groups.sort(function (a, b) {
+      return getUtcOffsetMin(a.cities[0].tz) - getUtcOffsetMin(b.cities[0].tz);
+    });
 
     const list = document.createElement('div');
     list.className = 'country-list';
 
-    allEntries.forEach(function (c) {
-      const diff = formatDiff(getUtcOffsetMin(c.tz) - userOffMin);
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'country-item' + (c.isUser ? ' current' : '');
-      if (!c.isUser) {
-        item.dataset.lat = String(c.lat);
-        item.dataset.lng = String(c.lng);
-      }
-      item.innerHTML =
-        '<span class="country-name">' + c.name + (c.sub ? '<small>' + c.sub + '</small>' : '') + '</span>' +
-        '<span class="country-info">' +
-          '<span class="country-diff">' + (c.isUser ? '目前位置' : diff) + '</span>' +
-          '<span class="country-time" data-tz="' + c.tz + '">' + fmtTime(c.tz) + '</span>' +
+    groups.forEach(function (g) {
+      const repTz   = g.cities[0].tz;
+      const multiCity = !g.isUser && g.cities.length > 1;
+      const repDiff = (!g.isUser && !g.isCurrent) ? formatDiff(getUtcOffsetMin(repTz) - userOffMin) : null;
+
+      const group = document.createElement('div');
+      group.className = 'country-group' + (g.isCurrent ? ' current' : '') + (!g.isUser ? ' interactive' : '');
+
+      const header = document.createElement('div');
+      header.className = 'country-group-header';
+
+      header.innerHTML =
+        '<span class="country-group-left">' +
+          (g.flag ? '<span class="country-flag">' + g.flag + '</span>' : '') +
+          '<span class="country-group-name">' + g.name + '</span>' +
+        '</span>' +
+        '<span class="country-group-right">' +
+          '<span class="country-time" data-tz="' + repTz + '">' + renderTime(repTz) + '</span>' +
+          (g.isCurrent
+            ? '<span class="country-group-badge">現在</span>' + (multiCity ? CHEVRON_SVG : '')
+            : '<span class="country-group-diff">(' + repDiff + ')</span>' + (multiCity ? CHEVRON_SVG : '')) +
         '</span>';
-      list.appendChild(item);
+      group.appendChild(header);
+
+      if (multiCity) {
+        const citiesEl = document.createElement('div');
+        citiesEl.className = 'country-cities';
+        g.cities.forEach(function (city) {
+          const cityDiff = formatDiff(getUtcOffsetMin(city.tz) - userOffMin);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'country-city-btn';
+          btn.dataset.lat = String(city.lat);
+          btn.dataset.lng = String(city.lng);
+          btn.innerHTML =
+            '<span class="country-city-name">' + city.sub + '</span>' +
+            '<span class="country-group-right">' +
+              '<span class="country-time" data-tz="' + city.tz + '">' + renderTime(city.tz) + '</span>' +
+              '<span class="country-group-diff">(' + cityDiff + ')</span>' +
+            '</span>';
+          citiesEl.appendChild(btn);
+        });
+        group.appendChild(citiesEl);
+
+        header.addEventListener('click', function () {
+          group.classList.toggle('open');
+        });
+      } else if (!g.isUser) {
+        const city = g.cities[0];
+        header.dataset.lat = String(city.lat);
+        header.dataset.lng = String(city.lng);
+        header.style.cursor = 'pointer';
+      }
+
+      list.appendChild(group);
     });
 
     list.addEventListener('click', function (e) {
-      const item = e.target.closest('.country-item');
-      if (!item || item.classList.contains('current')) return;
-      const lat = parseFloat(item.dataset.lat);
-      const lng = parseFloat(item.dataset.lng);
+      const target = e.target.closest('.country-city-btn, .country-group-header[data-lat]');
+      if (!target) return;
+      const lat = parseFloat(target.dataset.lat);
+      const lng = parseFloat(target.dataset.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       updateMarker(lat, lng);
       map.setView([lat, lng], Math.max(map.getZoom(), 10));
@@ -805,7 +977,7 @@
 
   function tickCountryTimes() {
     countryPanel.querySelectorAll('.country-time[data-tz]').forEach(function (el) {
-      el.textContent = fmtTime(el.dataset.tz);
+      el.innerHTML = renderTime(el.dataset.tz);
     });
   }
 

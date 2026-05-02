@@ -73,6 +73,18 @@
         <div class="tab-panel" id="panel-postcard"></div>
       </section>
       <section class="sidebar-section nav-panel" data-nav-panel="flower">
+        <div class="coords-block">
+          <label for="inputCoordsFlower">GPS 座標（緯度, 經度）</label>
+          <div class="row">
+            <input type="text" id="inputCoordsFlower" placeholder="40.720638, -74.000816" autocomplete="off" />
+            <button type="button" class="btn-icon" id="btnMoveFlower" data-tooltip="移動">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path d="M88,224l24-24V176l24-24,48,72,24-24-32-88,33-31A24,24,0,0,0,175,47L144,80,56,48,32,72l72,48L80,144H56L32,168l40,16Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+            </button>
+            <button type="button" class="btn-icon" id="btnRecenterFlower" data-tooltip="回到現實位置">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><line x1="128" y1="240" x2="128" y2="208" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="128" cy="128" r="80" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="128" y1="16" x2="128" y2="48" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="16" y1="128" x2="48" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="240" y1="128" x2="208" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><circle cx="128" cy="128" r="32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+            </button>
+          </div>
+        </div>
         <div class="input-cols">
           <div>
             <label>時速 (km/h) <span class="info-icon" id="speedHint" data-tooltip="約 5.0 m/s（每秒移動距離）"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="16" height="16"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></svg></span></label>
@@ -99,6 +111,7 @@
       </div>
       </div><!-- /.sidebar-body -->
       </div><!-- /.sidebar-main -->
+      <img id="pikminImg" class="pikmin-decoration" src="" alt="" />
     </aside>
     <div class="right">
       <div class="map-wrap">
@@ -150,20 +163,6 @@
           <div class="help-method"><span class="help-method-tag">手動輸入</span><span class="help-method-desc">在頂部輸入框貼上座標後按 Enter 或點擊 ✈ 送出</span></div>
           <div class="help-method"><span class="help-method-tag">點擊地圖</span><span class="help-method-desc">在地圖任意位置點擊，即時更新模擬座標</span></div>
           <div class="help-method"><span class="help-method-tag">回到現實</span><span class="help-method-desc">點擊 ⊙ 按鈕，讀取裝置真實 GPS 並同步至地圖</span></div>
-        </div>
-
-        <div class="help-divider"></div>
-
-        <div class="help-section">
-          <div class="help-section-label">支援的座標格式</div>
-          <div class="help-code">
-            <span>25.006003, 121.454933</span>
-            <span>N25° 0.36018' E121° 27.2960'</span>
-            <span>N25°0'21.61" E121°27'17.76"</span>
-            <span>geo:25.006003,121.454933</span>
-            <span>@25.006003,121.454933</span>
-          </div>
-          <p class="help-p help-p-sm">Unicode 度分秒符號（˚ º ′ ″ 等）會自動正規化</p>
         </div>
 
         <div class="help-divider"></div>
