@@ -19,7 +19,7 @@
   const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>';
   function setPlayPauseIcon(playing) {
     btnStart.innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
-    btnStart.setAttribute('data-tooltip', playing ? '停止' : '開始');
+    btnStart.setAttribute('data-tooltip', playing ? '暫停' : '開始');
   }
   const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
@@ -42,10 +42,12 @@
   const playbackLayer = L.layerGroup().addTo(map); // 定時移動：依 GPX 每秒標一個軌跡點（無折線）
 
   let playbackTimer = null;
+  let testMode = false;
   let selectedTunnel = null;
   let routeActive = false;
   let routeSpeed = 0;
   let routeDir = 'N';
+  let lastHorizontalDir = 'W';
   let routeEndTime = 0;
   const tunnelById = Object.create(null);
   const presetsById = Object.create(null);
@@ -194,6 +196,16 @@
     if (marker) map.removeLayer(marker);
     marker = L.marker([lat, lng], { icon: PIKMIN_ICON }).addTo(map);
     setCurrentCoords(lat, lng);
+    if (routeActive) updateMarkerFacing(routeDir);
+  }
+
+  function updateMarkerFacing(dir) {
+    if (!marker) return;
+    const el = marker.getElement();
+    if (!el) return;
+    if (dir === 'E' || dir === 'NE' || dir === 'SE') lastHorizontalDir = 'E';
+    else if (dir === 'W' || dir === 'NW' || dir === 'SW') lastHorizontalDir = 'W';
+    el.classList.toggle('facing-east', lastHorizontalDir === 'E');
   }
 
   function renderPresetOptions(items) {
@@ -253,6 +265,7 @@
   }
 
   function getSelectedTunnelOrNotify() {
+    if (selectedTunnel && selectedTunnel.test) return selectedTunnel;
     if (selectedTunnel && selectedTunnel.host && Number.isFinite(selectedTunnel.port)) {
       return selectedTunnel;
     }
@@ -286,25 +299,29 @@
       empty.textContent = '找不到設備';
       selectTunnel.appendChild(empty);
       selectedTunnel = null;
-      return;
+    } else {
+      let rememberedId = '';
+      const rememberedHost = getLastTunnelHost();
+      items.forEach(function (item, idx) {
+        const id = item.udid + '::' + String(idx);
+        tunnelById[id] = item;
+        const kind = isIpAddress(item.iface) ? '無線' : '有線';
+        const op = document.createElement('option');
+        op.value = id;
+        op.textContent = item.iface === '192.168.50.67' ? '阿暖手機' : kind + ' / ' + item.iface;
+        selectTunnel.appendChild(op);
+        if (!rememberedId && rememberedHost && item.host === rememberedHost) {
+          rememberedId = id;
+        }
+      });
+      selectTunnel.value = rememberedId || Object.keys(tunnelById)[0];
+      selectedTunnel = tunnelById[selectTunnel.value] || null;
+      if (selectedTunnel) saveLastTunnelHost(selectedTunnel.host);
     }
-    let rememberedId = '';
-    const rememberedHost = getLastTunnelHost();
-    items.forEach(function (item, idx) {
-      const id = item.udid + '::' + String(idx);
-      tunnelById[id] = item;
-      const kind = isIpAddress(item.iface) ? '無線' : '有線';
-      const op = document.createElement('option');
-      op.value = id;
-      op.textContent = item.iface === '192.168.50.67' ? '阿暖手機' : kind + ' / ' + item.iface;
-      selectTunnel.appendChild(op);
-      if (!rememberedId && rememberedHost && item.host === rememberedHost) {
-        rememberedId = id;
-      }
-    });
-    selectTunnel.value = rememberedId || Object.keys(tunnelById)[0];
-    selectedTunnel = tunnelById[selectTunnel.value] || null;
-    if (selectedTunnel) saveLastTunnelHost(selectedTunnel.host);
+    if (testMode) {
+      selectedTunnel = { test: true };
+      selectTunnel.disabled = true;
+    }
   }
 
   async function fetchTunneldDevices() {
@@ -371,6 +388,14 @@
     }
     const tunnel = getSelectedTunnelOrNotify();
     if (!tunnel) return;
+    if (tunnel.test) {
+      addPathPoint(lat, lng);
+      stopPlaybackAnimation();
+      updateMarker(lat, lng);
+      map.setView([lat, lng], map.getZoom());
+      showStatus(true, '已設定座標');
+      return;
+    }
     try {
       const r = await fetch(API + '/location', {
         method: 'POST',
@@ -473,10 +498,15 @@
     const metersPerDegLon = 111320.0 * Math.cos(latRad);
     let dLat = 0;
     let dLng = 0;
+    const diag = moveMeters / Math.SQRT2;
     if (direction === 'N') dLat = moveMeters / metersPerDegLat;
     else if (direction === 'S') dLat = -moveMeters / metersPerDegLat;
     else if (direction === 'E') dLng = moveMeters / metersPerDegLon;
     else if (direction === 'W') dLng = -moveMeters / metersPerDegLon;
+    else if (direction === 'NE') { dLat = diag / metersPerDegLat; dLng = diag / metersPerDegLon; }
+    else if (direction === 'NW') { dLat = diag / metersPerDegLat; dLng = -diag / metersPerDegLon; }
+    else if (direction === 'SE') { dLat = -diag / metersPerDegLat; dLng = diag / metersPerDegLon; }
+    else if (direction === 'SW') { dLat = -diag / metersPerDegLat; dLng = -diag / metersPerDegLon; }
     return [lat + dLat, lng + dLng];
   }
 
@@ -522,9 +552,9 @@
   }
 
   /** 與 GPX 相同節奏：立即標第一點，之後每秒標下一點（不畫連線） */
-  function startPlaybackAnimation(latlngs) {
+  function startPlaybackAnimation(latlngs, clearPath) {
     stopPlaybackAnimation();
-    playbackLayer.clearLayers();
+    if (clearPath) playbackLayer.clearLayers();
     if (!latlngs || latlngs.length === 0) return;
     let i = 0;
     function step() {
@@ -556,7 +586,7 @@
     const durationMin = parseFloat(inputDuration.value);
     const durationSafe = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 60;
     const dir = (inputDir.value || 'N').toUpperCase();
-    if (!{ N: 1, E: 1, S: 1, W: 1 }[dir]) {
+    if (!{ N: 1, E: 1, S: 1, W: 1, NE: 1, NW: 1, SE: 1, SW: 1 }[dir]) {
       showStatus(false, '方位无效');
       return;
     }
@@ -566,6 +596,18 @@
       route = generateRouteGpx(currentLat, currentLng, speed, dir, totalSeconds);
     } catch (e) {
       showStatus(false, '產生 GPX 失敗');
+      return;
+    }
+    if (tunnel.test) {
+      routeActive = true;
+      routeSpeed = speed;
+      routeDir = dir;
+      routeEndTime = Date.now() / 1000 + totalSeconds;
+      setPlayPauseIcon(true);
+      map.setView([currentLat, currentLng], 18);
+      startPlaybackAnimation(route.latlngs, true);
+      updateMarkerFacing(dir);
+      showStatus(true, '已開始定時移動');
       return;
     }
     try {
@@ -588,7 +630,9 @@
       routeDir = dir;
       routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
-      startPlaybackAnimation(route.latlngs);
+      map.setView([currentLat, currentLng], 18);
+      startPlaybackAnimation(route.latlngs, true);
+      updateMarkerFacing(dir);
       showStatus(true, '已開始定時移動');
     } catch (e) {
       showStatus(false, '啟動路線失敗');
@@ -597,10 +641,12 @@
 
   async function stopRoute() {
     routeActive = false;
-    try {
-      await fetch(API + '/route/stop', { method: 'POST' });
-    } catch (e) {
-      // ignore
+    if (!selectedTunnel || !selectedTunnel.test) {
+      try {
+        await fetch(API + '/route/stop', { method: 'POST' });
+      } catch (e) {
+        // ignore
+      }
     }
     stopPlaybackAnimation();
     setPlayPauseIcon(false);
@@ -619,6 +665,14 @@
       route = generateRouteGpx(lat, lng, routeSpeed, routeDir, remaining);
     } catch (e) {
       showStatus(false, '產生 GPX 失敗');
+      return;
+    }
+    if (tunnel.test) {
+      routeEndTime = Date.now() / 1000 + remaining;
+      stopPlaybackAnimation();
+      updateMarker(lat, lng);
+      map.setView([lat, lng], map.getZoom());
+      startPlaybackAnimation(route.latlngs);
       return;
     }
     try {
@@ -654,8 +708,34 @@
   });
 
   selectTunnel.addEventListener('change', function () {
+    if (testMode) return;
     selectedTunnel = tunnelById[selectTunnel.value] || null;
-    if (selectedTunnel) saveLastTunnelHost(selectedTunnel.host);
+    if (selectedTunnel && !selectedTunnel.test) saveLastTunnelHost(selectedTunnel.host);
+  });
+  const labelDevice = document.querySelector('label[for="selectTunnel"]');
+  labelDevice.addEventListener('dblclick', function () {
+    testMode = !testMode;
+    if (testMode) {
+      selectedTunnel = { test: true };
+      const testOp = document.createElement('option');
+      testOp.value = '__TEST__';
+      testOp.textContent = '測試模式';
+      testOp.id = 'optTestMode';
+      selectTunnel.appendChild(testOp);
+      selectTunnel.value = '__TEST__';
+      selectTunnel.disabled = true;
+      selectTunnel.classList.add('test-mode-select');
+      labelDevice.classList.add('test-mode-active');
+      btnRefreshTunnel.style.display = 'none';
+    } else {
+      const testOp = document.getElementById('optTestMode');
+      if (testOp) testOp.remove();
+      selectTunnel.disabled = false;
+      selectTunnel.classList.remove('test-mode-select');
+      labelDevice.classList.remove('test-mode-active');
+      btnRefreshTunnel.style.display = '';
+      selectedTunnel = tunnelById[selectTunnel.value] || null;
+    }
   });
   btnRefreshTunnel.addEventListener('click', function () {
     fetchTunneldDevices();
@@ -690,15 +770,36 @@
     });
   });
 
+  const speedWarning = document.getElementById('speedWarning');
   function updateSpeedHint() {
     const s = parseFloat(inputSpeed.value);
     if (Number.isFinite(s) && s >= 0) {
       const mps = (s * 1000) / 3600;
-      speedHint.setAttribute('data-tooltip', '約 ' + mps.toFixed(1) + ' m/s（每秒移動距離）');
+      speedHint.setAttribute('data-tooltip', '約 ' + mps.toFixed(1) + ' m/s (每秒移動距離)');
+      speedWarning.style.display = s > 18 ? '' : 'none';
     }
   }
   inputSpeed.addEventListener('input', updateSpeedHint);
   inputSpeed.addEventListener('change', updateSpeedHint);
+  inputDir.addEventListener('change', function () {
+    if (!routeActive) return;
+    routeDir = (inputDir.value || 'N').toUpperCase();
+    restartRouteFrom(currentLat, currentLng);
+  });
+  (function initDirCross() {
+    const labels = document.querySelectorAll('.dir-label');
+    function setActive(dir) {
+      labels.forEach(function (g) { g.classList.toggle('active', g.dataset.dir === dir); });
+    }
+    labels.forEach(function (g) {
+      g.addEventListener('click', function () {
+        inputDir.value = g.dataset.dir;
+        setActive(g.dataset.dir);
+        inputDir.dispatchEvent(new Event('change'));
+      });
+    });
+    setActive(inputDir.value || 'E');
+  }());
 
   var sidebar = document.querySelector('.sidebar');
   var sidebarToggle = document.getElementById('sidebarToggle');
@@ -738,9 +839,13 @@
       appTooltip.style.opacity = '0';
       var tw = appTooltip.offsetWidth;
       var th = appTooltip.offsetHeight;
-      if (el.getAttribute('data-tooltip-position') === 'right') {
+      var pos = el.getAttribute('data-tooltip-position');
+      if (pos === 'right') {
         appTooltip.style.left = (rect.right + 8) + 'px';
         appTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
+      } else if (pos === 'bottom') {
+        appTooltip.style.left = (rect.left + (rect.width - tw) / 2) + 'px';
+        appTooltip.style.top = (rect.bottom + 6) + 'px';
       } else {
         appTooltip.style.left = rect.left + 'px';
         appTooltip.style.top = (rect.top - th - 6) + 'px';
@@ -769,6 +874,11 @@
 
   const COUNTRIES = [
     // ── 亞洲 ──
+    { name: '台灣', flag: '🇹🇼', cities: [
+      { sub: '台北', tz: 'Asia/Taipei', lat: 25.0478, lng: 121.5170 },
+      { sub: '台中', tz: 'Asia/Taipei', lat: 24.1376, lng: 120.6857 },
+      { sub: '高雄', tz: 'Asia/Taipei', lat: 22.6386, lng: 120.3026 },
+    ]},
     { name: '日本', flag: '🇯🇵', cities: [
       { sub: '京都', tz: 'Asia/Tokyo', lat: 35.0116, lng: 135.7681 },
       { sub: '大阪', tz: 'Asia/Tokyo', lat: 34.6937, lng: 135.5023 },
@@ -949,7 +1059,13 @@
         group.appendChild(citiesEl);
 
         header.addEventListener('click', function () {
-          group.classList.toggle('open');
+          const isOpen = group.classList.contains('open');
+          const currentOpen = list.querySelector('.country-group.open');
+          if (currentOpen) currentOpen.classList.remove('open');
+          if (!isOpen) {
+            const delay = currentOpen ? 250 : 0;
+            setTimeout(function () { group.classList.add('open'); }, delay);
+          }
         });
       } else if (!g.isUser) {
         const city = g.cities[0];

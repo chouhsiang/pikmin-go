@@ -50,7 +50,7 @@
       <div class="sidebar-content">
       <section class="sidebar-section nav-panel active" data-nav-panel="mushroom">
         <div class="coords-block">
-          <label for="inputCoords">GPS 座標（緯度, 經度）</label>
+          <label for="inputCoords">GPS 座標 (緯度, 經度)</label>
           <div class="row">
             <input type="text" id="inputCoords" placeholder="40.720638, -74.000816" autocomplete="off" />
             <button type="button" class="btn-icon" id="btnMove" data-tooltip="移動">
@@ -74,7 +74,7 @@
       </section>
       <section class="sidebar-section nav-panel" data-nav-panel="flower">
         <div class="coords-block">
-          <label for="inputCoordsFlower">GPS 座標（緯度, 經度）</label>
+          <label for="inputCoordsFlower">GPS 座標 (緯度, 經度)</label>
           <div class="row">
             <input type="text" id="inputCoordsFlower" placeholder="40.720638, -74.000816" autocomplete="off" />
             <button type="button" class="btn-icon" id="btnMoveFlower" data-tooltip="移動">
@@ -87,8 +87,9 @@
         </div>
         <div class="input-cols">
           <div>
-            <label>時速 (km/h) <span class="info-icon" id="speedHint" data-tooltip="約 5.0 m/s（每秒移動距離）"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="16" height="16"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></svg></span></label>
+            <label>時速 (km/h) <span class="info-icon" id="speedHint" data-tooltip="約 5.0 m/s (每秒移動距離)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="16" height="16"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></svg></span></label>
             <input type="number" id="inputSpeed" placeholder="18" min="0" step="1" value="18" />
+            <div id="speedWarning" class="speed-warning" style="display:none">超過 18 (km/h) 將影響種花效率</div>
           </div>
           <div>
             <label>持續時間 (分鐘)</label>
@@ -96,16 +97,51 @@
           </div>
         </div>
         <label>方位</label>
-        <div class="row">
-          <select id="inputDir">
-            <option value="E" selected>東</option>
-            <option value="S">南</option>
-            <option value="W">西</option>
-            <option value="N">北</option>
-          </select>
-          <button type="button" class="btn-icon" id="btnStart" data-tooltip="開始">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
-          </button>
+        <input type="hidden" id="inputDir" value="E">
+        <div class="dir-compass-wrap">
+          <div class="dir-compass-container">
+            <svg class="dir-cross-svg" viewBox="0 0 100 100" width="230" height="230">
+              <line x1="24" y1="24" x2="76" y2="76" class="dir-diag"/>
+              <line x1="76" y1="24" x2="24" y2="76" class="dir-diag"/>
+              <line x1="50" y1="16" x2="50" y2="84" class="dir-line"/>
+              <line x1="16" y1="50" x2="84" y2="50" class="dir-line"/>
+              <g class="dir-label" data-dir="N">
+                <rect x="41" y="2" width="18" height="18" fill="transparent"/>
+                <text x="50" y="11" text-anchor="middle" dominant-baseline="middle">北</text>
+              </g>
+              <g class="dir-label" data-dir="S">
+                <rect x="41" y="80" width="18" height="18" fill="transparent"/>
+                <text x="50" y="89" text-anchor="middle" dominant-baseline="middle">南</text>
+              </g>
+              <g class="dir-label" data-dir="W">
+                <rect x="2" y="41" width="18" height="18" fill="transparent"/>
+                <text x="11" y="50" text-anchor="middle" dominant-baseline="middle">西</text>
+              </g>
+              <g class="dir-label active" data-dir="E">
+                <rect x="80" y="41" width="18" height="18" fill="transparent"/>
+                <text x="89" y="50" text-anchor="middle" dominant-baseline="middle">東</text>
+              </g>
+              <g class="dir-label dir-label-sm" data-dir="NW">
+                <rect x="8" y="10" width="20" height="14" fill="transparent"/>
+                <text x="18" y="17" text-anchor="middle" dominant-baseline="middle">西北</text>
+              </g>
+              <g class="dir-label dir-label-sm" data-dir="NE">
+                <rect x="72" y="10" width="20" height="14" fill="transparent"/>
+                <text x="82" y="17" text-anchor="middle" dominant-baseline="middle">東北</text>
+              </g>
+              <g class="dir-label dir-label-sm" data-dir="SW">
+                <rect x="8" y="76" width="20" height="14" fill="transparent"/>
+                <text x="18" y="83" text-anchor="middle" dominant-baseline="middle">西南</text>
+              </g>
+              <g class="dir-label dir-label-sm" data-dir="SE">
+                <rect x="72" y="76" width="20" height="14" fill="transparent"/>
+                <text x="82" y="83" text-anchor="middle" dominant-baseline="middle">東南</text>
+              </g>
+            </svg>
+            <button type="button" class="btn-icon dir-start-btn" id="btnStart" data-tooltip="開始" data-tooltip-position="bottom">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
+            </button>
+          </div>
         </div>
       </section>
       </div>
@@ -151,7 +187,7 @@
           <p class="help-p">頂部下拉選單列出所有可用的 iOS 裝置。若列表為空或顯示「找不到設備」：</p>
           <ul class="help-ul">
             <li>確認裝置已透過 USB 連線並信任此電腦</li>
-            <li>確認後端服務（tunneld）正在本機執行</li>
+            <li>確認後端服務 (tunneld) 正在本機執行</li>
             <li>點擊右側刷新按鈕重新掃描</li>
           </ul>
         </div>
@@ -176,7 +212,7 @@
 
         <div class="help-section">
           <div class="help-section-label">純點</div>
-          <p class="help-p">從預設座標清單（locations.json）快速選擇常用據點，點擊按鈕立即設定為模擬座標。</p>
+          <p class="help-p">從預設座標清單 (locations.json) 快速選擇常用據點，點擊按鈕立即設定為模擬座標。</p>
         </div>
 
         <div class="help-divider"></div>
@@ -185,8 +221,8 @@
           <div class="help-section-label">種花 — 自動移動</div>
           <p class="help-p">讓裝置依指定參數持續移動，適合批次採集路線資源。</p>
           <div class="help-steps">
-            <div class="help-step"><span class="help-step-num">1</span><span class="help-step-text">設定<strong>時速</strong>（km/h）與<strong>持續時間</strong>（分鐘）</span></div>
-            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">從下拉選單選擇移動<strong>方位</strong>（東／南／西／北）</span></div>
+            <div class="help-step"><span class="help-step-num">1</span><span class="help-step-text">設定<strong>時速</strong> (km/h) 與<strong>持續時間</strong> (分鐘)</span></div>
+            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">從下拉選單選擇移動<strong>方位</strong> (東／南／西／北)</span></div>
             <div class="help-step"><span class="help-step-num">3</span><span class="help-step-text">按 ▶ 開始移動，地圖即時標出每秒軌跡；按 ⏸ 可隨時停止</span></div>
           </div>
         </div>
