@@ -353,29 +353,25 @@
             <li>確認後端服務 (tunneld) 正在本機執行</li>
             <li>點擊右側刷新按鈕重新掃描</li>
           </ul>
+          <p class="help-p">雙擊「設備」標籤可切換<strong>測試模式</strong>，無需實體裝置即可預覽所有操作。</p>
         </div>
 
         <div class="help-divider"></div>
 
         <div class="help-section">
           <div class="help-section-label">打菇 — 設定模擬座標</div>
-          <div class="help-method"><span class="help-method-tag">手動輸入</span><span class="help-method-desc">在頂部輸入框貼上座標後按 Enter 或點擊 ✈ 送出</span></div>
-          <div class="help-method"><span class="help-method-tag">點擊地圖</span><span class="help-method-desc">在地圖任意位置點擊，即時更新模擬座標</span></div>
-          <div class="help-method"><span class="help-method-tag">回到現實</span><span class="help-method-desc">點擊 ⊙ 按鈕，讀取裝置真實 GPS 並同步至地圖</span></div>
+          <div class="help-method"><span class="help-method-tag">好菇點</span><span class="help-method-desc">依國家分類的常用據點，顯示當地時間與時差，點擊城市直接前往</span></div>
+          <div class="help-method"><span class="help-method-tag">純點</span><span class="help-method-desc">從預設清單 (locations.json) 以按鈕形式快選常用座標</span></div>
+          <div class="help-method"><span class="help-method-tag">手動輸入</span><span class="help-method-desc">貼上任意 GPS 座標後按 Enter 或點擊 ✈ 送出</span></div>
+          <div class="help-method"><span class="help-method-tag">點擊地圖</span><span class="help-method-desc">點擊地圖任意位置，即時設為模擬座標</span></div>
+          <div class="help-method"><span class="help-method-tag">回到現實</span><span class="help-method-desc">讀取裝置真實 GPS 位置並同步至地圖</span></div>
         </div>
 
         <div class="help-divider"></div>
 
         <div class="help-section">
-          <div class="help-section-label">國家快選</div>
-          <p class="help-p">顯示各國目前時間與和你所在時區的時差，列表由最早到最晚排序。<span class="help-tag">目前位置</span> 為你目前所在時區。點擊任一國家卡片，地圖會跳轉至該國預設座標並設為模擬位置。</p>
-        </div>
-
-        <div class="help-divider"></div>
-
-        <div class="help-section">
-          <div class="help-section-label">純點</div>
-          <p class="help-p">從預設座標清單 (locations.json) 快速選擇常用據點，點擊按鈕立即設定為模擬座標。</p>
+          <div class="help-section-label">美明信片</div>
+          <p class="help-p">收錄實際探索過的座標點。點擊圖片直接前往對應座標；右下角放大按鈕可預覽大圖，並在燈箱內按「前往這裡」前往。上方篩選器可依類型（賭花／打菇／探測器）篩選。</p>
         </div>
 
         <div class="help-divider"></div>
@@ -385,9 +381,18 @@
           <p class="help-p">讓裝置依指定參數持續移動，適合批次採集路線資源。</p>
           <div class="help-steps">
             <div class="help-step"><span class="help-step-num">1</span><span class="help-step-text">設定<strong>時速</strong> (km/h) 與<strong>持續時間</strong> (分鐘)</span></div>
-            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">從下拉選單選擇移動<strong>方位</strong> (東／南／西／北)</span></div>
-            <div class="help-step"><span class="help-step-num">3</span><span class="help-step-text">按 ▶ 開始移動，地圖即時標出每秒軌跡；按 ⏸ 可隨時停止</span></div>
+            <div class="help-step"><span class="help-step-num">2</span><span class="help-step-text">從羅盤選擇移動<strong>方位</strong></span></div>
+            <div class="help-step"><span class="help-step-num">3</span><span class="help-step-text">按 ▶ 開始移動，地圖即時標出每秒軌跡</span></div>
+            <div class="help-step"><span class="help-step-num">4</span><span class="help-step-text">按 ⏸ 暫停；再按 ▶ 從目前位置接續剩餘時間繼續移動</span></div>
           </div>
+          <p class="help-p">移動中可隨時切換座標（好菇點、手動輸入或點地圖），裝置會立即從新座標出發繼續移動。</p>
+        </div>
+
+        <div class="help-divider"></div>
+
+        <div class="help-section">
+          <div class="help-section-label">地圖控制</div>
+          <p class="help-p">地圖右下角提供縮放（＋／－）與定位按鈕；點擊定位按鈕會讀取裝置真實 GPS，將地圖與模擬座標同步至現實位置。</p>
         </div>
 
         <div class="help-divider"></div>
