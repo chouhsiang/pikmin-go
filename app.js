@@ -49,6 +49,8 @@
   let routeDir = 'N';
   let lastHorizontalDir = 'W';
   let routeEndTime = 0;
+  let paused = false;
+  let pausedRemaining = 0;
   const tunnelById = Object.create(null);
   const presetsById = Object.create(null);
 
@@ -571,6 +573,7 @@
         stopPlaybackAnimation();
         setPlayPauseIcon(false);
         routeActive = false;
+        paused = false;
         return;
       }
       const ll = latlngs[i];
@@ -650,6 +653,7 @@
 
   async function stopRoute() {
     routeActive = false;
+    paused = false;
     if (!selectedTunnel || !selectedTunnel.test) {
       try {
         await fetch(API + '/route/stop', { method: 'POST' });
@@ -659,6 +663,57 @@
     }
     stopPlaybackAnimation();
     setPlayPauseIcon(false);
+  }
+
+  async function pauseRoute() {
+    paused = true;
+    pausedRemaining = Math.max(0, Math.floor(routeEndTime - Date.now() / 1000));
+    stopPlaybackAnimation();
+    if (selectedTunnel && !selectedTunnel.test) {
+      try { await fetch(API + '/route/stop', { method: 'POST' }); } catch (e) {}
+    }
+    setPlayPauseIcon(false);
+  }
+
+  async function resumeRoute() {
+    if (pausedRemaining <= 0) {
+      paused = false;
+      routeActive = false;
+      setPlayPauseIcon(false);
+      return;
+    }
+    routeEndTime = Date.now() / 1000 + pausedRemaining;
+    paused = false;
+    const tunnel = getSelectedTunnelOrNotify();
+    if (!tunnel) return;
+    let route;
+    try {
+      route = generateRouteGpx(currentLat, currentLng, routeSpeed, routeDir, pausedRemaining);
+    } catch (e) {
+      showStatus(false, '產生 GPX 失敗');
+      return;
+    }
+    if (tunnel.test) {
+      setPlayPauseIcon(true);
+      startPlaybackAnimation(route.latlngs);
+      return;
+    }
+    try {
+      const r = await fetch(API + '/route/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gpx: route.gpx, rsd_host: tunnel.host, rsd_port: tunnel.port }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        showStatus(false, data.detail || '繼續路線失敗');
+        return;
+      }
+      setPlayPauseIcon(true);
+      startPlaybackAnimation(route.latlngs);
+    } catch (e) {
+      showStatus(false, '繼續路線失敗');
+    }
   }
 
   async function restartRouteFrom(lat, lng) {
@@ -709,8 +764,10 @@
   }
 
   btnStart.addEventListener('click', function () {
-    if (playbackTimer !== null) {
-      stopRoute();
+    if (paused) {
+      resumeRoute();
+    } else if (routeActive) {
+      pauseRoute();
     } else {
       startRoute();
     }
