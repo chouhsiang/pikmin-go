@@ -24,13 +24,13 @@
   const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
   // 預設紐約（單欄格式與 placeholder 一致）
-  document.getElementById('pikminImg').src = './Pikmin1.png';
+  document.getElementById('pikminImg').src = './assets/Pikmin1.webp';
 
   let currentLat = 40.720638;
   let currentLng = -74.000816;
   let marker = null;
 
-  const map = L.map('map', { zoomControl: true }).setView([currentLat, currentLng], 13);
+  const map = L.map('map', { zoomControl: false }).setView([currentLat, currentLng], 13);
   // CARTO Voyager (Raster Retina)：高解析度、柔和配色
   const voyagerUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}' + (L.Browser.retina ? '@2x.png' : '.png');
   L.tileLayer(voyagerUrl, {
@@ -186,7 +186,7 @@
 
   const PIKMIN_ICON = L.divIcon({
     className: 'pikmin-marker-wrapper',
-    html: '<img class="pikmin-marker-img" src="./Pikmin_walk.png" /><div class="pikmin-marker-dot"></div>',
+    html: '<img class="pikmin-marker-img" src="./assets/Pikmin_walk.png" /><div class="pikmin-marker-dot"></div>',
     iconSize: [52, 83],
     iconAnchor: [11, 79],
     popupAnchor: [0, -79],
@@ -197,6 +197,14 @@
     marker = L.marker([lat, lng], { icon: PIKMIN_ICON }).addTo(map);
     setCurrentCoords(lat, lng);
     if (routeActive) updateMarkerFacing(routeDir);
+    updateMarkerDeviceState();
+  }
+
+  function updateMarkerDeviceState() {
+    if (!marker) return;
+    const el = marker.getElement();
+    if (!el) return;
+    el.classList.toggle('no-device', !selectedTunnel);
   }
 
   function updateMarkerFacing(dir) {
@@ -322,6 +330,7 @@
       selectedTunnel = { test: true };
       selectTunnel.disabled = true;
     }
+    updateMarkerDeviceState();
   }
 
   async function fetchTunneldDevices() {
@@ -711,6 +720,7 @@
     if (testMode) return;
     selectedTunnel = tunnelById[selectTunnel.value] || null;
     if (selectedTunnel && !selectedTunnel.test) saveLastTunnelHost(selectedTunnel.host);
+    updateMarkerDeviceState();
   });
   const labelDevice = document.querySelector('label[for="selectTunnel"]');
   labelDevice.addEventListener('dblclick', function () {
@@ -736,6 +746,7 @@
       btnRefreshTunnel.style.display = '';
       selectedTunnel = tunnelById[selectTunnel.value] || null;
     }
+    updateMarkerDeviceState();
   });
   btnRefreshTunnel.addEventListener('click', function () {
     fetchTunneldDevices();
@@ -831,7 +842,7 @@
     appTooltip.style.display = 'none';
   }
 
-  document.querySelectorAll('.btn-icon[data-tooltip], .info-icon[data-tooltip]').forEach(function (el) {
+  document.querySelectorAll('.btn-icon[data-tooltip], .info-icon[data-tooltip], .map-ctrl-btn[data-tooltip]').forEach(function (el) {
     el.addEventListener('mouseenter', function () {
       var rect = el.getBoundingClientRect();
       appTooltip.textContent = el.getAttribute('data-tooltip');
@@ -846,6 +857,9 @@
       } else if (pos === 'bottom') {
         appTooltip.style.left = (rect.left + (rect.width - tw) / 2) + 'px';
         appTooltip.style.top = (rect.bottom + 6) + 'px';
+      } else if (pos === 'left') {
+        appTooltip.style.left = (rect.left - tw - 8) + 'px';
+        appTooltip.style.top = (rect.top + (rect.height - th) / 2) + 'px';
       } else {
         appTooltip.style.left = rect.left + 'px';
         appTooltip.style.top = (rect.top - th - 6) + 'px';
@@ -1100,6 +1114,25 @@
   buildCountryPanel();
   setInterval(tickCountryTimes, 60000);
 
+  // ── 地圖控制按鈕 ──────────────────────────────────────────────────────────
+  document.getElementById('btnZoomIn').addEventListener('click', function () { map.zoomIn(); });
+  document.getElementById('btnZoomOut').addEventListener('click', function () { map.zoomOut(); });
+  document.getElementById('btnLocate').addEventListener('click', function () {
+    if (!navigator.geolocation) {
+      alert('你的瀏覽器不支援定位功能');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function (pos) { applyGeolocationPosition(pos); },
+      function (err) {
+        if (err.code === 1) {
+          alert('定位權限被拒絕，請在瀏覽器設定中允許「皮皮探險器」存取位置。');
+        }
+      },
+      GEO_OPTIONS
+    );
+  });
+
   // ── 使用教學 FAB ──────────────────────────────────────────────────────────
   var btnHelp = document.getElementById('btnHelp');
   var helpOverlay = document.getElementById('helpOverlay');
@@ -1128,6 +1161,45 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') helpOverlay.classList.remove('active');
+  });
+
+  // ── 美明信片 ──────────────────────────────────────────────────────────────
+  var postcardLightbox = document.getElementById('postcardLightbox');
+  var postcardLightboxImg = document.getElementById('postcardLightboxImg');
+  var postcardLightboxGoto = document.getElementById('postcardLightboxGoto');
+  var lightboxLat = null, lightboxLng = null;
+
+  document.querySelectorAll('.postcard-card').forEach(function (card) {
+    card.addEventListener('click', function () {
+      setLocation(parseFloat(card.dataset.lat), parseFloat(card.dataset.lng));
+    });
+    card.querySelector('.postcard-zoom-btn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      postcardLightboxImg.src = card.querySelector('.postcard-img').src;
+      lightboxLat = parseFloat(card.dataset.lat);
+      lightboxLng = parseFloat(card.dataset.lng);
+      postcardLightbox.classList.add('active');
+    });
+  });
+  postcardLightbox.addEventListener('click', function () {
+    postcardLightbox.classList.remove('active');
+  });
+  postcardLightboxGoto.addEventListener('click', function (e) {
+    e.stopPropagation();
+    postcardLightbox.classList.remove('active');
+    setLocation(lightboxLat, lightboxLng);
+  });
+
+  document.querySelectorAll('.postcard-filter').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.postcard-filter').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var filter = btn.dataset.filter;
+      document.querySelectorAll('.postcard-card').forEach(function (card) {
+        var name = card.dataset.name || '';
+        card.style.display = (filter === 'all' || name.startsWith(filter)) ? '' : 'none';
+      });
+    });
   });
 
   // 先以目前記憶的座標畫標記並填滿欄位，再向後端同步；最後可選用瀏覽器定位覆寫
