@@ -955,6 +955,7 @@
       { sub: '大阪', tz: 'Asia/Tokyo', lat: 34.6937, lng: 135.5023 },
       { sub: '熊本', tz: 'Asia/Tokyo', lat: 32.8031, lng: 130.7079 },
       { sub: '小樽', tz: 'Asia/Tokyo', lat: 43.1907, lng: 140.9947 },
+      { sub: '鳥取', tz: 'Asia/Tokyo', lat: 35.481417, lng: 133.829827 },
     ]},
     { name: '香港', flag: '🇭🇰', cities: [
       { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
