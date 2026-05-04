@@ -338,6 +338,8 @@
   async function fetchTunneldDevices() {
     const refreshIcon = btnRefreshTunnel.querySelector('svg');
     refreshIcon.classList.add('spinning');
+    const spinStart = Date.now();
+    const MIN_SPIN_MS = 700;
     try {
       const r = await fetch(API + '/tunneld');
       const data = await r.json().catch(function () { return null; });
@@ -363,7 +365,13 @@
       renderTunnelOptions([]);
       showStatus(false, '無法取得 tunneld 設備');
     } finally {
-      refreshIcon.classList.remove('spinning');
+      const elapsed = Date.now() - spinStart;
+      const wait = MIN_SPIN_MS - elapsed;
+      if (wait > 0) {
+        setTimeout(function () { refreshIcon.classList.remove('spinning'); }, wait);
+      } else {
+        refreshIcon.classList.remove('spinning');
+      }
     }
   }
 
@@ -446,6 +454,8 @@
   function doMoveFrom(inputEl) {
     const pair = parseCoordPair(inputEl.value);
     if (pair) {
+      updateMarker(pair.lat, pair.lng);
+      map.setView([pair.lat, pair.lng], 18);
       setLocation(pair.lat, pair.lng);
     } else {
       flashEl(inputEl);
@@ -961,7 +971,7 @@
       { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
     ]},
     { name: '新加坡', flag: '🇸🇬', cities: [
-      { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.3521, lng: 103.8198 },
+      { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.2905, lng: 103.8467 },
     ]},
     { name: '泰國', flag: '🇹🇭', cities: [
       { sub: '曼谷', tz: 'Asia/Bangkok', lat: 13.7563, lng: 100.5018 },
@@ -1156,7 +1166,7 @@
       const lng = parseFloat(target.dataset.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       updateMarker(lat, lng);
-      map.setView([lat, lng], Math.max(map.getZoom(), 10));
+      map.setView([lat, lng], 18);
       setLocation(lat, lng);
     });
 
