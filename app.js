@@ -961,11 +961,12 @@
       { sub: '高雄', tz: 'Asia/Taipei', lat: 22.6386, lng: 120.3026 },
     ]},
     { name: '日本', flag: '🇯🇵', cities: [
-      { sub: '京都', tz: 'Asia/Tokyo', lat: 35.0116, lng: 135.7681 },
-      { sub: '大阪', tz: 'Asia/Tokyo', lat: 34.6937, lng: 135.5023 },
-      { sub: '熊本', tz: 'Asia/Tokyo', lat: 32.8031, lng: 130.7079 },
-      { sub: '小樽', tz: 'Asia/Tokyo', lat: 43.1907, lng: 140.9947 },
-      { sub: '鳥取', tz: 'Asia/Tokyo', lat: 35.481417, lng: 133.829827 },
+      { sub: '小樽',   tz: 'Asia/Tokyo', lat: 43.1907,    lng: 140.9947    },
+      { sub: '鳥取',   tz: 'Asia/Tokyo', lat: 35.481417,  lng: 133.829827  },
+      { sub: '名古屋', tz: 'Asia/Tokyo', lat: 35.1709,    lng: 136.8815    },
+      { sub: '京都',   tz: 'Asia/Tokyo', lat: 35.0116,    lng: 135.7681    },
+      { sub: '大阪',   tz: 'Asia/Tokyo', lat: 34.6937,    lng: 135.5023    },
+      { sub: '熊本',   tz: 'Asia/Tokyo', lat: 32.8031,    lng: 130.7079    },
     ]},
     { name: '香港', flag: '🇭🇰', cities: [
       { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
@@ -974,22 +975,22 @@
       { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.2905, lng: 103.8467 },
     ]},
     { name: '泰國', flag: '🇹🇭', cities: [
-      { sub: '曼谷', tz: 'Asia/Bangkok', lat: 13.7563, lng: 100.5018 },
       { sub: '清邁', tz: 'Asia/Bangkok', lat: 18.7883, lng:  98.9853 },
+      { sub: '曼谷', tz: 'Asia/Bangkok', lat: 13.7563, lng: 100.5018 },
     ]},
     // ── 歐洲 ──
     { name: '義大利', flag: '🇮🇹', cities: [
-      { sub: '羅馬',   tz: 'Europe/Rome', lat: 41.9028, lng: 12.4964 },
-      { sub: '米蘭',   tz: 'Europe/Rome', lat: 45.4642, lng:  9.1900 },
-      { sub: '威尼斯', tz: 'Europe/Rome', lat: 45.4408, lng: 12.3155 },
+      { sub: '米蘭',     tz: 'Europe/Rome', lat: 45.4642, lng:  9.1900 },
+      { sub: '威尼斯',   tz: 'Europe/Rome', lat: 45.4408, lng: 12.3155 },
       { sub: '佛羅倫斯', tz: 'Europe/Rome', lat: 43.7696, lng: 11.2558 },
+      { sub: '羅馬',     tz: 'Europe/Rome', lat: 41.9028, lng: 12.4964 },
       { sub: '那不勒斯', tz: 'Europe/Rome', lat: 40.8518, lng: 14.2681 },
     ]},
     // ── 美洲 ──
     { name: '美國', flag: '🇺🇸', cities: [
       { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.6062, lng: -122.3321 },
-      { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
       { sub: '紐約',   tz: 'America/New_York',    lat: 40.7128, lng:  -74.0060 },
+      { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
     ]},
     // ── 大洋洲 ──
     { name: '紐西蘭', flag: '🇳🇿', cities: [
