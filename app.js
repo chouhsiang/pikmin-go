@@ -318,7 +318,8 @@
         const kind = isIpAddress(item.iface) ? '無線' : '有線';
         const op = document.createElement('option');
         op.value = id;
-        op.textContent = item.iface === '192.168.50.67' ? '阿暖手機' : kind + ' / ' + item.iface;
+        const DEVICE_NAMES = { '192.168.50.67': '阿暖手機', '192.168.50.227': '阿暖手機', '192.168.50.123': '執行長平板' };
+        op.textContent = DEVICE_NAMES[item.iface] || kind + ' / ' + item.iface;
         selectTunnel.appendChild(op);
         if (!rememberedId && rememberedHost && item.host === rememberedHost) {
           rememberedId = id;
@@ -401,6 +402,11 @@
   }
 
   async function setLocation(lat, lng) {
+    if (paused) {
+      setCurrentCoords(lat, lng);
+      updateMarker(lat, lng);
+      return;
+    }
     if (routeActive) {
       await restartRouteFrom(lat, lng);
       return;
