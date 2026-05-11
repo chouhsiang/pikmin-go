@@ -318,7 +318,7 @@
         const kind = isIpAddress(item.iface) ? '無線' : '有線';
         const op = document.createElement('option');
         op.value = id;
-        const DEVICE_NAMES = { '192.168.50.67': '阿暖手機', '192.168.50.227': '阿暖手機', '192.168.50.123': '執行長平板' };
+        const DEVICE_NAMES = { '192.168.50.67': '阿暖手機', '192.168.50.227': '阿暖手機', '192.168.50.123': '執行長手機' };
         op.textContent = DEVICE_NAMES[item.iface] || kind + ' / ' + item.iface;
         selectTunnel.appendChild(op);
         if (!rememberedId && rememberedHost && item.host === rememberedHost) {
@@ -994,7 +994,7 @@
     ]},
     // ── 美洲 ──
     { name: '美國', flag: '🇺🇸', cities: [
-      { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.6062, lng: -122.3321 },
+      { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.520222, lng: -122.357889 },
       { sub: '紐約',   tz: 'America/New_York',    lat: 40.7128, lng:  -74.0060 },
       { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
     ]},
