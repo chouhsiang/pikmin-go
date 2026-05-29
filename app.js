@@ -967,8 +967,9 @@
       { sub: '高雄', tz: 'Asia/Taipei', lat: 22.6386, lng: 120.3026 },
     ]},
     { name: '日本', flag: '🇯🇵', cities: [
-      { sub: '小樽',   tz: 'Asia/Tokyo', lat: 43.1907,    lng: 140.9947    },
-      { sub: '鳥取',   tz: 'Asia/Tokyo', lat: 35.481417,  lng: 133.829827  },
+      { sub: '小樽',   tz: 'Asia/Tokyo', lat: 43.1907,               lng: 140.9947            },
+      { sub: '東京',   tz: 'Asia/Tokyo', lat: 35.671928772634885,   lng: 139.70381947282382  },
+      { sub: '鳥取',   tz: 'Asia/Tokyo', lat: 35.481417,            lng: 133.829827          },
       { sub: '名古屋', tz: 'Asia/Tokyo', lat: 35.1709,    lng: 136.8815    },
       { sub: '京都',   tz: 'Asia/Tokyo', lat: 35.0116,    lng: 135.7681    },
       { sub: '大阪',   tz: 'Asia/Tokyo', lat: 34.6937,    lng: 135.5023    },
@@ -978,7 +979,7 @@
       { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
     ]},
     { name: '新加坡', flag: '🇸🇬', cities: [
-      { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.2905, lng: 103.8467 },
+      { sub: '新加坡', tz: 'Asia/Singapore', lat: 1.3306438832092644, lng: 103.83941477787349 },
     ]},
     { name: '泰國', flag: '🇹🇭', cities: [
       { sub: '清邁', tz: 'Asia/Bangkok', lat: 18.7883, lng:  98.9853 },
