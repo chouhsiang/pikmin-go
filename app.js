@@ -4,17 +4,23 @@
   const presetPills = document.getElementById('presetPills');
   const inputCoords = document.getElementById('inputCoords');
   const inputCoordsFlower = document.getElementById('inputCoordsFlower');
+  const inputCoordsBookmark = document.getElementById('inputCoordsBookmark');
   const selectTunnel = document.getElementById('selectTunnel');
   const btnRefreshTunnel = document.getElementById('btnRefreshTunnel');
   const inputSpeed = document.getElementById('inputSpeed');
   const inputDir = document.getElementById('inputDir');
   const inputDuration = document.getElementById('inputDuration');
   const speedHint = document.getElementById('speedHint');
-  const btnMove = document.getElementById('btnMove');
   const btnRecenter = document.getElementById('btnRecenter');
-  const btnMoveFlower = document.getElementById('btnMoveFlower');
   const btnRecenterFlower = document.getElementById('btnRecenterFlower');
+  const btnAddBookmark = document.getElementById('btnAddBookmark');
+  const bookmarkList = document.getElementById('bookmarkList');
   const btnStart = document.getElementById('btnStart');
+  const flowerStatsBlock = document.getElementById('flowerStatsBlock');
+  const flowerTimerText = document.getElementById('flowerTimerText');
+  const flowerCountText = document.getElementById('flowerCountText');
+  const flowerCoinDisplay = document.getElementById('flowerCoinDisplay');
+  const flowerCoinText = document.getElementById('flowerCoinText');
   const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>';
   const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><path fill="currentColor" d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>';
   function setPlayPauseIcon(playing) {
@@ -24,7 +30,7 @@
   const LAST_TUNNEL_HOST_KEY = 'pik.lastTunnelHost';
 
   // 預設紐約（單欄格式與 placeholder 一致）
-  document.getElementById('pikminImg').src = './assets/Pikmin1.webp';
+  document.getElementById('pikminImg').src = './assets/Pikmin3.png';
 
   let currentLat = 40.720638;
   let currentLng = -74.000816;
@@ -42,6 +48,8 @@
   const playbackLayer = L.layerGroup().addTo(map); // 定時移動：依 GPX 每秒標一個軌跡點（無折線）
 
   let playbackTimer = null;
+  let flowerTimerInterval = null;
+  let flowerElapsedSeconds = 0;
   let testMode = false;
   let selectedTunnel = null;
   let routeActive = false;
@@ -70,6 +78,7 @@
     const v = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
     inputCoords.value = v;
     inputCoordsFlower.value = v;
+    inputCoordsBookmark.value = v;
   }
 
   function setCurrentCoords(lat, lng) {
@@ -221,7 +230,21 @@
   function renderPresetOptions(items) {
     for (const k in presetsById) delete presetsById[k];
     presetPills.innerHTML = '';
+    let currentGroup = null;
     (items || []).forEach(function (item, idx) {
+      if (item.section != null) {
+        currentGroup = document.createElement('div');
+        currentGroup.className = 'pill-group';
+        const label = document.createElement('span');
+        label.className = 'pill-group-label';
+        label.textContent = item.section;
+        currentGroup.appendChild(label);
+        const pills = document.createElement('div');
+        pills.className = 'pill-list';
+        currentGroup.appendChild(pills);
+        presetPills.appendChild(currentGroup);
+        return;
+      }
       const id = 'preset-' + String(idx);
       presetsById[id] = item;
       const btn = document.createElement('button');
@@ -229,7 +252,8 @@
       btn.className = 'pill-btn';
       btn.dataset.presetId = id;
       btn.textContent = item.name;
-      presetPills.appendChild(btn);
+      const target = currentGroup ? currentGroup.querySelector('.pill-list') : presetPills;
+      target.appendChild(btn);
     });
   }
 
@@ -240,6 +264,7 @@
       if (!r.ok || !Array.isArray(data)) throw new Error('invalid locations');
       const list = data
         .map(function (x) {
+          if (x.section != null) return { section: String(x.section) };
           return {
             name: String(x.name || ''),
             lat: Number(x.lat),
@@ -247,7 +272,7 @@
           };
         })
         .filter(function (x) {
-          return x.name && Number.isFinite(x.lat) && Number.isFinite(x.lng);
+          return x.section != null || (x.name && Number.isFinite(x.lat) && Number.isFinite(x.lng));
         });
       renderPresetOptions(list);
     } catch (e) {
@@ -467,14 +492,242 @@
       flashEl(inputEl);
     }
   }
-  btnMove.addEventListener('click', function () { doMoveFrom(inputCoords); });
   inputCoords.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doMoveFrom(inputCoords); }
   });
-  btnMoveFlower.addEventListener('click', function () { doMoveFrom(inputCoordsFlower); });
+  inputCoords.addEventListener('click', function () { inputCoords.value = ''; });
   inputCoordsFlower.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); doMoveFrom(inputCoordsFlower); }
   });
+  inputCoordsFlower.addEventListener('click', function () { inputCoordsFlower.value = ''; });
+  inputCoordsBookmark.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doMoveFrom(inputCoordsBookmark); }
+  });
+  inputCoordsBookmark.addEventListener('click', function () { inputCoordsBookmark.value = ''; });
+
+  const BOOKMARK_SUGGESTIONS = ['巨大菇', '水菇', '水晶菇', '毒菇', '火菇', '電菇', '大藍菇', '大白菇', '大紅菇', '大黃菇'];
+  const suggestionDropdown = document.createElement('div');
+  suggestionDropdown.className = 'bookmark-suggestion-dropdown';
+  document.body.appendChild(suggestionDropdown);
+  function showSuggestions(input) {
+    const filter = input.value.trim();
+    const filtered = filter ? BOOKMARK_SUGGESTIONS.filter(function (s) { return s.includes(filter); }) : BOOKMARK_SUGGESTIONS;
+    if (filtered.length === 0) { suggestionDropdown.style.display = 'none'; return; }
+    suggestionDropdown.innerHTML = '';
+    filtered.forEach(function (s) {
+      const opt = document.createElement('div');
+      opt.className = 'bookmark-suggestion-item';
+      opt.textContent = s;
+      opt.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        input.value = s;
+        suggestionDropdown.style.display = 'none';
+      });
+      suggestionDropdown.appendChild(opt);
+    });
+    const rect = input.getBoundingClientRect();
+    suggestionDropdown.style.left = rect.left + 'px';
+    suggestionDropdown.style.top = (rect.bottom + 4) + 'px';
+    suggestionDropdown.style.width = rect.width + 'px';
+    suggestionDropdown.style.display = 'block';
+  }
+  function hideSuggestions() { suggestionDropdown.style.display = 'none'; }
+
+  const BOOKMARK_KEY = 'pik.bookmarks';
+  function loadBookmarks() {
+    try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch (_) { return []; }
+  }
+  function saveBookmarks(list) {
+    localStorage.setItem(BOOKMARK_KEY, JSON.stringify(list));
+  }
+  const ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><line x1="64" y1="192" x2="192" y2="64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/><polyline points="88 64 192 64 192 168" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/></svg>';
+  const TRASH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="15" height="15"><rect width="256" height="256" fill="none"/><polyline points="216 60 40 60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/><line x1="104" y1="104" x2="104" y2="168" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/><line x1="152" y1="104" x2="152" y2="168" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/><path d="M200,60V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/><path d="M168,60V36a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8V60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="24"/></svg>';
+  const GRIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="12" height="12"><circle cx="88" cy="64" r="16" fill="currentColor"/><circle cx="168" cy="64" r="16" fill="currentColor"/><circle cx="88" cy="128" r="16" fill="currentColor"/><circle cx="168" cy="128" r="16" fill="currentColor"/><circle cx="88" cy="192" r="16" fill="currentColor"/><circle cx="168" cy="192" r="16" fill="currentColor"/></svg>';
+
+  let dragSrcIdx = null;
+  let insertIdx = null;
+  const spacer = document.createElement('div');
+  spacer.className = 'bookmark-spacer';
+
+  bookmarkList.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    const items = Array.from(bookmarkList.querySelectorAll('.bookmark-item:not(.dragging)'));
+    let placed = false;
+    let candidateIdx = null;
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        candidateIdx = i;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed && items.length > 0) {
+      candidateIdx = loadBookmarks().length;
+    }
+    if (candidateIdx === null || candidateIdx === dragSrcIdx || candidateIdx === dragSrcIdx + 1) {
+      spacer.remove();
+      insertIdx = null;
+    } else {
+      insertIdx = candidateIdx;
+      bookmarkList.insertBefore(spacer, placed ? items[candidateIdx] : items[items.length - 1].nextSibling);
+    }
+  });
+
+  bookmarkList.addEventListener('drop', function (e) {
+    e.preventDefault();
+    spacer.remove();
+    if (dragSrcIdx === null || insertIdx === null || dragSrcIdx === insertIdx) return;
+    const updated = loadBookmarks();
+    const [moved] = updated.splice(dragSrcIdx, 1);
+    let target = insertIdx;
+    if (dragSrcIdx < target) target--;
+    updated.splice(target, 0, moved);
+    saveBookmarks(updated);
+    renderBookmarks();
+  });
+
+  function renderBookmarks() {
+    const list = loadBookmarks();
+    bookmarkList.innerHTML = '';
+    if (list.length === 0) return;
+
+    const header = document.createElement('div');
+    header.className = 'bookmark-list-header';
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'bookmark-clear-btn';
+    clearBtn.textContent = '清除全部';
+    clearBtn.addEventListener('click', function () { saveBookmarks([]); renderBookmarks(); });
+    header.appendChild(clearBtn);
+    bookmarkList.appendChild(header);
+
+    list.forEach(function (bm, idx) {
+      const item = document.createElement('div');
+      item.className = 'bookmark-item';
+      item.draggable = true;
+
+      const handle = document.createElement('span');
+      handle.className = 'bookmark-handle';
+      handle.innerHTML = GRIP_SVG;
+
+      const textBlock = document.createElement('div');
+      textBlock.className = 'bookmark-text-block';
+
+      const label = document.createElement('span');
+      label.className = 'bookmark-coords';
+      label.textContent = bm.name || (bm.lat.toFixed(6) + ', ' + bm.lng.toFixed(6));
+      label.style.cursor = 'text';
+      textBlock.appendChild(label);
+
+      label.addEventListener('click', function () {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'bookmark-name-input';
+        input.placeholder = bm.lat.toFixed(6) + ', ' + bm.lng.toFixed(6);
+        if (bm.name) { input.value = bm.name; }
+        input.addEventListener('focus', function () { showSuggestions(input); });
+        input.addEventListener('input', function () { showSuggestions(input); });
+        item.replaceChild(input, textBlock);
+        input.focus();
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const updated = loadBookmarks();
+            updated[idx].name = input.value.trim() || null;
+            saveBookmarks(updated);
+            renderBookmarks();
+          } else if (e.key === 'Escape') {
+            renderBookmarks();
+          }
+        });
+        input.addEventListener('blur', function () {
+          hideSuggestions();
+          const updated = loadBookmarks();
+          updated[idx].name = input.value.trim() || null;
+          saveBookmarks(updated);
+          renderBookmarks();
+        });
+      });
+
+      item.addEventListener('dragstart', function (e) {
+        dragSrcIdx = idx;
+        insertIdx = null;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(function () { item.classList.add('dragging'); }, 0);
+      });
+      item.addEventListener('dragend', function () {
+        spacer.remove();
+        item.classList.remove('dragging');
+        dragSrcIdx = null;
+        insertIdx = null;
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'bookmark-actions';
+      const gotoBtn = document.createElement('button');
+      gotoBtn.type = 'button';
+      gotoBtn.className = 'btn-icon';
+      gotoBtn.setAttribute('data-tooltip', '前往');
+      gotoBtn.innerHTML = ARROW_SVG;
+      attachTooltip(gotoBtn);
+      gotoBtn.addEventListener('click', function () { setLocation(bm.lat, bm.lng); });
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn-icon';
+      removeBtn.setAttribute('data-tooltip', '移除');
+      removeBtn.innerHTML = TRASH_SVG;
+      attachTooltip(removeBtn);
+      removeBtn.addEventListener('click', function () {
+        const updated = loadBookmarks();
+        updated.splice(idx, 1);
+        saveBookmarks(updated);
+        renderBookmarks();
+      });
+      actions.appendChild(gotoBtn);
+      actions.appendChild(removeBtn);
+      item.appendChild(handle);
+      if (bm.flag) {
+        const flagEl = document.createElement('span');
+        flagEl.className = 'bookmark-flag';
+        flagEl.textContent = bm.flag;
+        item.appendChild(flagEl);
+      }
+      item.appendChild(textBlock);
+      item.appendChild(actions);
+      bookmarkList.appendChild(item);
+    });
+  }
+  const toast = document.createElement('div');
+  toast.className = 'app-toast';
+  document.body.appendChild(toast);
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+  }
+
+  btnAddBookmark.addEventListener('click', function () {
+    const list = loadBookmarks();
+    const exists = list.some(function (bm) { return bm.lat === currentLat && bm.lng === currentLng; });
+    if (exists) { showToast('座標已存在'); return; }
+    const bm = { lat: currentLat, lng: currentLng, flag: null };
+    list.push(bm);
+    saveBookmarks(list);
+    renderBookmarks();
+    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + currentLat + '&lon=' + currentLng + '&format=json&zoom=3', {
+      headers: { 'User-Agent': 'pikmin-go-simulator' }
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      const code = data.address && data.address.country_code;
+      const flag = code ? code.toUpperCase().split('').map(function (c) { return String.fromCodePoint(c.charCodeAt(0) + 0x1F1A5); }).join('') : null;
+      const updated = loadBookmarks();
+      const target = updated.find(function (b) { return b.lat === bm.lat && b.lng === bm.lng; });
+      if (target) { target.flag = flag; saveBookmarks(updated); renderBookmarks(); }
+    }).catch(function () {});
+  });
+  renderBookmarks();
 
   // 以瀏覽器真實定位更新標記與地圖（不會自動寫入 iPhone，需再按「移動」或點地圖）
   function doRecenter() {
@@ -571,6 +824,48 @@
     return { gpx: lines.join('\n'), latlngs: latlngs };
   }
 
+  function updateFlowerTimerDisplay() {
+    const m = Math.floor(flowerElapsedSeconds / 60);
+    const s = flowerElapsedSeconds % 60;
+    flowerTimerText.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function updateFlowerStats() {
+    const flowers = Math.floor(flowerElapsedSeconds * routeSpeed * 20000 / (18 * 3600));
+    const coins = Math.min(60, Math.floor(flowers / 250));
+    flowerCountText.textContent = flowers.toLocaleString('zh-TW');
+    flowerCoinText.textContent = coins;
+    flowerCoinDisplay.classList.toggle('flower-coin-max', coins >= 60);
+  }
+
+  function startFlowerTimer(reset) {
+    if (reset) {
+      if (flowerTimerInterval !== null) { clearInterval(flowerTimerInterval); flowerTimerInterval = null; }
+      flowerElapsedSeconds = 0;
+      updateFlowerTimerDisplay();
+      updateFlowerStats();
+    }
+    flowerStatsBlock.style.display = '';
+    if (flowerTimerInterval !== null) return;
+    flowerTimerInterval = setInterval(function () {
+      flowerElapsedSeconds++;
+      updateFlowerTimerDisplay();
+      updateFlowerStats();
+    }, 1000);
+  }
+
+  function pauseFlowerTimer() {
+    if (flowerTimerInterval !== null) { clearInterval(flowerTimerInterval); flowerTimerInterval = null; }
+  }
+
+  function resetFlowerTimer() {
+    pauseFlowerTimer();
+    flowerElapsedSeconds = 0;
+    updateFlowerTimerDisplay();
+    updateFlowerStats();
+    flowerStatsBlock.style.display = 'none';
+  }
+
   function stopPlaybackAnimation() {
     if (playbackTimer !== null) {
       clearInterval(playbackTimer);
@@ -590,6 +885,7 @@
         setPlayPauseIcon(false);
         routeActive = false;
         paused = false;
+        resetFlowerTimer();
         return;
       }
       const ll = latlngs[i];
@@ -632,6 +928,7 @@
       routeDir = dir;
       routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
+      startFlowerTimer(true);
       map.setView([currentLat, currentLng], 18);
       startPlaybackAnimation(route.latlngs, true);
       updateMarkerFacing(dir);
@@ -658,6 +955,7 @@
       routeDir = dir;
       routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
+      startFlowerTimer(true);
       map.setView([currentLat, currentLng], 18);
       startPlaybackAnimation(route.latlngs, true);
       updateMarkerFacing(dir);
@@ -679,6 +977,7 @@
     }
     stopPlaybackAnimation();
     setPlayPauseIcon(false);
+    resetFlowerTimer();
   }
 
   async function pauseRoute() {
@@ -689,6 +988,7 @@
       try { await fetch(API + '/route/stop', { method: 'POST' }); } catch (e) {}
     }
     setPlayPauseIcon(false);
+    pauseFlowerTimer();
   }
 
   async function resumeRoute() {
@@ -696,6 +996,7 @@
       paused = false;
       routeActive = false;
       setPlayPauseIcon(false);
+      resetFlowerTimer();
       return;
     }
     routeEndTime = Date.now() / 1000 + pausedRemaining;
@@ -711,6 +1012,7 @@
     }
     if (tunnel.test) {
       setPlayPauseIcon(true);
+      startFlowerTimer(false);
       startPlaybackAnimation(route.latlngs);
       return;
     }
@@ -726,6 +1028,7 @@
         return;
       }
       setPlayPauseIcon(true);
+      startFlowerTimer(false);
       startPlaybackAnimation(route.latlngs);
     } catch (e) {
       showStatus(false, '繼續路線失敗');
@@ -915,7 +1218,7 @@
     appTooltip.style.display = 'none';
   }
 
-  document.querySelectorAll('.btn-icon[data-tooltip], .info-icon[data-tooltip], .map-ctrl-btn[data-tooltip]').forEach(function (el) {
+  function attachTooltip(el) {
     el.addEventListener('mouseenter', function () {
       var rect = el.getBoundingClientRect();
       appTooltip.textContent = el.getAttribute('data-tooltip');
@@ -940,7 +1243,8 @@
       appTooltip.style.opacity = '1';
     });
     el.addEventListener('mouseleave', hideSidebarTooltip);
-  });
+  }
+  document.querySelectorAll('.btn-icon[data-tooltip], .info-icon[data-tooltip], .map-ctrl-btn[data-tooltip]').forEach(attachTooltip);
 
   sidebarToggle.addEventListener('mouseenter', showSidebarTooltip);
   sidebarToggle.addEventListener('mouseleave', hideSidebarTooltip);
@@ -970,9 +1274,10 @@
       { sub: '小樽',   tz: 'Asia/Tokyo', lat: 43.1907,               lng: 140.9947            },
       { sub: '東京',   tz: 'Asia/Tokyo', lat: 35.671928772634885,   lng: 139.70381947282382  },
       { sub: '鳥取',   tz: 'Asia/Tokyo', lat: 35.481417,            lng: 133.829827          },
-      { sub: '名古屋', tz: 'Asia/Tokyo', lat: 35.1709,    lng: 136.8815    },
+      { sub: '名古屋', tz: 'Asia/Tokyo', lat: 35.180052,  lng: 136.900592  },
       { sub: '京都',   tz: 'Asia/Tokyo', lat: 35.0116,    lng: 135.7681    },
       { sub: '大阪',   tz: 'Asia/Tokyo', lat: 34.6937,    lng: 135.5023    },
+      { sub: '福岡',   tz: 'Asia/Tokyo', lat: 33.5903,    lng: 130.4017    },
       { sub: '熊本',   tz: 'Asia/Tokyo', lat: 32.8031,    lng: 130.7079    },
     ]},
     { name: '香港', flag: '🇭🇰', cities: [
@@ -995,6 +1300,7 @@
     ]},
     // ── 美洲 ──
     { name: '美國', flag: '🇺🇸', cities: [
+      { sub: '科克蘭', tz: 'America/Los_Angeles', lat: 47.684417, lng: -122.251250 },
       { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.520222, lng: -122.357889 },
       { sub: '紐約',   tz: 'America/New_York',    lat: 40.7128, lng:  -74.0060 },
       { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
@@ -1110,7 +1416,7 @@
       const repDiff = (!g.isUser && !g.isCurrent) ? formatDiff(getUtcOffsetMin(repTz) - userOffMin) : null;
 
       const group = document.createElement('div');
-      group.className = 'country-group' + (g.isCurrent ? ' current' : '') + (!g.isUser ? ' interactive' : '');
+      group.className = 'country-group' + (g.isCurrent ? ' current' : '') + (!g.isUser ? ' interactive' : '') + (!multiCity && !g.isUser ? ' single-city' : '');
 
       const header = document.createElement('div');
       header.className = 'country-group-header';

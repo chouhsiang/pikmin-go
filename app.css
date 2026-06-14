@@ -17,8 +17,8 @@ html, body {
 .sidebar {
   position: relative;
   z-index: 1;
-  width: 336px;
-  min-width: 336px;
+  width: 360px;
+  min-width: 352px;
   background: #18181b;
   border-right: 1px solid #27272a;
   display: flex;
@@ -28,7 +28,7 @@ html, body {
 }
 .sidebar-header {
   flex-shrink: 0;
-  padding: 24px 1rem;
+  padding: 16px 1rem;
   border-bottom: 1px solid #27272a;
   max-height: 120px;
   overflow: hidden;
@@ -83,6 +83,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
   transition: opacity 0.15s ease;
 }
 .sidebar-content {
@@ -96,9 +97,10 @@ html, body {
 }
 .pikmin-decoration {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
-  width: 120px;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
   height: auto;
   pointer-events: none;
   user-select: none;
@@ -204,11 +206,14 @@ label[for="selectTunnel"].test-mode-active {
   background-position: right 10px center;
 }
 .sidebar input::placeholder { color: #71717a; }
+.sidebar input:focus, .sidebar select:focus { outline: none; border-color: #FBD23F; }
 .info-icon { display: inline-flex; align-items: center; color: inherit; cursor: default; vertical-align: middle; }
 .sidebar .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .sidebar .row input,
 .sidebar .row select { flex: 1; min-width: 0; margin-bottom: 0; }
 .dir-compass-wrap { display: flex; justify-content: center; margin-top: 4px; border: 1px solid #3f3f46; border-radius: 12px; padding: 12px; }
+.flower-stats-block { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; text-align: center; font-size: 12px; color: #a1a1aa; }
+.flower-coin-max { background: #450a0a; color: #fca5a5; border-radius: 4px; padding: 1px 6px; transition: background 0.2s, color 0.2s; }
 .dir-compass-container { position: relative; width: 230px; height: 230px; }
 .dir-cross-svg { display: block; }
 .dir-compass-container .dir-start-btn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
@@ -445,7 +450,7 @@ label[for="selectTunnel"].test-mode-active {
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
 .seg-btn {
   flex: 1;
@@ -464,7 +469,7 @@ label[for="selectTunnel"].test-mode-active {
 .tab-panel { display: none; }
 .tab-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .nav-panel { display: none; }
-.nav-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.nav-panel.active { display: flex; flex-direction: column; flex: 1; min-height: 0; padding-bottom: 0; }
 .country-user-tz {
   display: flex;
   align-items: center;
@@ -497,6 +502,7 @@ label[for="selectTunnel"].test-mode-active {
   border-radius: 8px;
   overflow: hidden;
 }
+.country-group.single-city { border-color: transparent; }
 .country-group.current {
   background: #28220a;
   border-color: #644F02;
@@ -526,7 +532,7 @@ label[for="selectTunnel"].test-mode-active {
   flex-shrink: 0;
 }
 .country-group-name {
-  font-size: 0.8125rem;
+  font-size: 12px;
   color: #e4e4e7;
 }
 .country-group-right {
@@ -592,12 +598,15 @@ label[for="selectTunnel"].test-mode-active {
   color: #a1a1aa;
 }
 .coords-block {
-  padding-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #27272a;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .coords-block .row { margin-bottom: 0; }
+.pill-groups { display: flex; flex-direction: column; gap: 20px; }
 .pill-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill-group { display: flex; flex-direction: column; gap: 8px; }
+.pill-group-label { font-size: 0.75rem; font-weight: 500; color: #a1a1aa; }
 .pill-btn {
   padding: 4px 10px;
   border-radius: 999px;
@@ -807,3 +816,92 @@ label[for="selectTunnel"].test-mode-active {
   vertical-align: middle;
 }
 .help-divider { height: 1px; background: #27272a; flex-shrink: 0; }
+.app-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(calc(-50% + 8px));
+  background: #000;
+  color: #fff;
+  font-size: 0.8125rem;
+  padding: 8px 16px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+}
+.app-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-50%);
+}
+.bookmark-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.bookmark-list-header { display: flex; justify-content: flex-end; margin-bottom: 2px; }
+.bookmark-clear-btn {
+  background: none;
+  border: none;
+  color: #71717a;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.bookmark-clear-btn:hover { color: #f87171; }
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 6px 4px;
+  border-radius: 6px;
+  background: #27272a;
+  gap: 4px;
+  cursor: grab;
+  transition: opacity 0.15s, background 0.1s;
+}
+.bookmark-item.dragging { opacity: 0.3; }
+.bookmark-spacer { height: 32px; border-radius: 6px; background: #FBD23F1a; border: 1px dashed #FBD23F66; margin: 0; flex-shrink: 0; }
+.bookmark-handle { color: #52525b; flex-shrink: 0; display: flex; align-items: center; }
+.bookmark-flag { font-size: 14px; flex-shrink: 0; line-height: 1; }
+.bookmark-text-block { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+.bookmark-coords {
+  font-size: 12px;
+  color: #d4d4d8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bookmark-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.bookmark-suggestion-dropdown {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+.bookmark-suggestion-item {
+  padding: 7px 12px;
+  font-size: 12px;
+  color: #d4d4d8;
+  cursor: pointer;
+}
+.bookmark-suggestion-item:hover { background: #27272a; color: #fff; }
+.sidebar .bookmark-name-input,
+.sidebar .bookmark-name-input:focus {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #FBD23F;
+  border-radius: 0;
+  outline: none;
+  color: #d4d4d8;
+  font-size: 12px;
+  padding: 0;
+  margin-bottom: 0;
+  width: 0;
+  min-width: 0;
+}
+.bookmark-actions .btn-icon:last-child:hover { color: #f87171; border-color: #991b1b; background: #2d0a0a; }
