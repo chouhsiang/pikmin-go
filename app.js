@@ -1440,6 +1440,7 @@
       { sub: '艾德蒙茲', tz: 'America/Los_Angeles', lat: 47.781472, lng: -122.384167 },
       { sub: '科克蘭', tz: 'America/Los_Angeles', lat: 47.684417, lng: -122.251250 },
       { sub: '喬治城', tz: 'America/Los_Angeles', lat: 47.545861, lng: -122.327139 },
+      { sub: '南公園', tz: 'America/Los_Angeles', lat: 47.524833, lng: -122.342611 },
       { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.520222, lng: -122.357889 },
       { sub: '紐約',   tz: 'America/New_York',    lat: 40.720638, lng: -74.000816 },
       { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
