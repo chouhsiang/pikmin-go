@@ -54,7 +54,9 @@
   let selectedTunnel = null;
   let routeActive = false;
   let routeSpeed = 0;
-  let routeDir = 'N';
+  let routeDir = 90;
+  let dirPreviewLine = null;
+  let tunnelSelectTrigger = null;
   let lastHorizontalDir = 'W';
   let routeEndTime = 0;
   let paused = false;
@@ -218,12 +220,12 @@
     el.classList.toggle('no-device', !selectedTunnel);
   }
 
-  function updateMarkerFacing(dir) {
+  function updateMarkerFacing(bearing) {
     if (!marker) return;
     const el = marker.getElement();
     if (!el) return;
-    if (dir === 'E' || dir === 'NE' || dir === 'SE') lastHorizontalDir = 'E';
-    else if (dir === 'W' || dir === 'NW' || dir === 'SW') lastHorizontalDir = 'W';
+    if (Math.sin((bearing * Math.PI) / 180) >= 0) lastHorizontalDir = 'E';
+    else lastHorizontalDir = 'W';
     el.classList.toggle('facing-east', lastHorizontalDir === 'E');
   }
 
@@ -304,7 +306,7 @@
     if (selectedTunnel && selectedTunnel.host && Number.isFinite(selectedTunnel.port)) {
       return selectedTunnel;
     }
-    flashEl(selectTunnel);
+    flashEl(tunnelSelectTrigger || selectTunnel);
     return null;
   }
 
@@ -340,11 +342,14 @@
       items.forEach(function (item, idx) {
         const id = item.udid + '::' + String(idx);
         tunnelById[id] = item;
-        const kind = isIpAddress(item.iface) ? '無線' : '有線';
+        const iface = String(item.iface || '');
+        const kind = isIpAddress(iface) || /-Network$/i.test(iface) ? '無線' : '有線';
         const op = document.createElement('option');
         op.value = id;
         const DEVICE_NAMES = { '192.168.50.67': '阿暖手機', '192.168.50.227': '阿暖手機', '192.168.50.123': '執行長手機' };
-        op.textContent = DEVICE_NAMES[item.iface] || kind + ' / ' + item.iface;
+        const UDID_NAMES = { '00008140-00096D193A0B001C': '阿暖手機', '00008103-0014452022D9A01E': '執行長平板' };
+        const udidName = Object.keys(UDID_NAMES).find(function (u) { return iface.indexOf(u) !== -1 || String(item.udid || '').indexOf(u) !== -1; });
+        op.textContent = DEVICE_NAMES[item.iface] || (udidName ? UDID_NAMES[udidName] : kind + ' / ' + item.iface);
         selectTunnel.appendChild(op);
         if (!rememberedId && rememberedHost && item.host === rememberedHost) {
           rememberedId = id;
@@ -505,7 +510,7 @@
   });
   inputCoordsBookmark.addEventListener('click', function () { inputCoordsBookmark.value = ''; });
 
-  const BOOKMARK_SUGGESTIONS = ['巨大菇', '水菇', '水晶菇', '毒菇', '火菇', '電菇', '大藍菇', '大白菇', '大紅菇', '大黃菇'];
+  const BOOKMARK_SUGGESTIONS = ['多菇點', '巨大菇', '水菇', '水晶菇', '毒菇', '火菇', '電菇', '大藍菇', '大白菇', '大紅菇', '大黃菇'];
   const suggestionDropdown = document.createElement('div');
   suggestionDropdown.className = 'bookmark-suggestion-dropdown';
   document.body.appendChild(suggestionDropdown);
@@ -710,6 +715,11 @@
   }
 
   btnAddBookmark.addEventListener('click', function () {
+    // 若輸入框有貼上的座標但尚未按 Enter，先移動過去再加入
+    const pair = parseCoordPair(inputCoordsBookmark.value);
+    if (pair && (pair.lat !== currentLat || pair.lng !== currentLng)) {
+      doMoveFrom(inputCoordsBookmark);
+    }
     const list = loadBookmarks();
     const exists = list.some(function (bm) { return bm.lat === currentLat && bm.lng === currentLng; });
     if (exists) { showToast('座標已存在'); return; }
@@ -769,24 +779,16 @@
     );
   }
 
-  /** 每 intervalSec 秒沿方位移動一步（演算法與原 backend main.py 相同） */
-  function computeNextPosition(lat, lng, speedKmh, direction, intervalSec) {
+  /** 每 intervalSec 秒沿 bearing（度，0=北順時針）移動一步 */
+  function computeNextPosition(lat, lng, speedKmh, bearing, intervalSec) {
     const metersPerSec = (speedKmh * 1000) / 3600;
     const moveMeters = metersPerSec * intervalSec;
     const latRad = (lat * Math.PI) / 180;
     const metersPerDegLat = 111320.0;
     const metersPerDegLon = 111320.0 * Math.cos(latRad);
-    let dLat = 0;
-    let dLng = 0;
-    const diag = moveMeters / Math.SQRT2;
-    if (direction === 'N') dLat = moveMeters / metersPerDegLat;
-    else if (direction === 'S') dLat = -moveMeters / metersPerDegLat;
-    else if (direction === 'E') dLng = moveMeters / metersPerDegLon;
-    else if (direction === 'W') dLng = -moveMeters / metersPerDegLon;
-    else if (direction === 'NE') { dLat = diag / metersPerDegLat; dLng = diag / metersPerDegLon; }
-    else if (direction === 'NW') { dLat = diag / metersPerDegLat; dLng = -diag / metersPerDegLon; }
-    else if (direction === 'SE') { dLat = -diag / metersPerDegLat; dLng = diag / metersPerDegLon; }
-    else if (direction === 'SW') { dLat = -diag / metersPerDegLat; dLng = -diag / metersPerDegLon; }
+    const bearingRad = (bearing * Math.PI) / 180;
+    const dLat = (moveMeters * Math.cos(bearingRad)) / metersPerDegLat;
+    const dLng = (moveMeters * Math.sin(bearingRad)) / metersPerDegLon;
     return [lat + dLat, lng + dLng];
   }
 
@@ -909,15 +911,13 @@
     }
     const durationMin = parseFloat(inputDuration.value);
     const durationSafe = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 60;
-    const dir = (inputDir.value || 'N').toUpperCase();
-    if (!{ N: 1, E: 1, S: 1, W: 1, NE: 1, NW: 1, SE: 1, SW: 1 }[dir]) {
-      showStatus(false, '方位无效');
-      return;
-    }
+    const inputDirVal = parseFloat(inputDir.value);
+    const bearing = Number.isFinite(inputDirVal) ? inputDirVal : 90;
     const totalSeconds = Math.max(1, Math.floor(durationSafe * 60));
+    if (dirPreviewLine) { map.removeLayer(dirPreviewLine); dirPreviewLine = null; }
     let route;
     try {
-      route = generateRouteGpx(currentLat, currentLng, speed, dir, totalSeconds);
+      route = generateRouteGpx(currentLat, currentLng, speed, bearing, totalSeconds);
     } catch (e) {
       showStatus(false, '產生 GPX 失敗');
       return;
@@ -925,13 +925,13 @@
     if (tunnel.test) {
       routeActive = true;
       routeSpeed = speed;
-      routeDir = dir;
+      routeDir = bearing;
       routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
       startFlowerTimer(true);
       map.setView([currentLat, currentLng], 18);
       startPlaybackAnimation(route.latlngs, true);
-      updateMarkerFacing(dir);
+      updateMarkerFacing(bearing);
       showStatus(true, '已開始定時移動');
       return;
     }
@@ -952,13 +952,13 @@
       }
       routeActive = true;
       routeSpeed = speed;
-      routeDir = dir;
+      routeDir = bearing;
       routeEndTime = Date.now() / 1000 + totalSeconds;
       setPlayPauseIcon(true);
       startFlowerTimer(true);
       map.setView([currentLat, currentLng], 18);
       startPlaybackAnimation(route.latlngs, true);
-      updateMarkerFacing(dir);
+      updateMarkerFacing(bearing);
       showStatus(true, '已開始定時移動');
     } catch (e) {
       showStatus(false, '啟動路線失敗');
@@ -1127,6 +1127,64 @@
   btnRefreshTunnel.addEventListener('click', function () {
     fetchTunneldDevices();
   });
+  (function initCustomTunnelSelect() {
+    const wrap = document.createElement('div');
+    wrap.className = 'custom-select-wrap';
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    const menu = document.createElement('div');
+    menu.className = 'custom-select-menu';
+    wrap.appendChild(trigger);
+    wrap.appendChild(menu);
+    selectTunnel.parentNode.insertBefore(wrap, selectTunnel);
+    selectTunnel.style.display = 'none';
+    tunnelSelectTrigger = trigger;
+
+    function sync() {
+      const opts = Array.prototype.slice.call(selectTunnel.options);
+      const cur = opts.find(function (o) { return o.value === selectTunnel.value; }) || opts[0];
+      trigger.textContent = cur ? cur.textContent : '找不到設備';
+      trigger.classList.toggle('disabled', selectTunnel.disabled);
+      menu.innerHTML = '';
+      opts.forEach(function (o) {
+        const item = document.createElement('div');
+        item.className = 'custom-select-item' + (o.value === selectTunnel.value ? ' selected' : '');
+        item.textContent = o.textContent;
+        item.addEventListener('click', function () {
+          selectTunnel.value = o.value;
+          selectTunnel.dispatchEvent(new Event('change'));
+          menu.classList.remove('open');
+          sync();
+        });
+        menu.appendChild(item);
+      });
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (selectTunnel.disabled) return;
+      sync();
+      const willOpen = !menu.classList.contains('open');
+      if (willOpen) {
+        const rect = trigger.getBoundingClientRect();
+        menu.style.top = rect.bottom + 4 + 'px';
+        menu.style.left = rect.left + 'px';
+        menu.style.minWidth = rect.width + 'px';
+      }
+      menu.classList.toggle('open', willOpen);
+    });
+    document.addEventListener('click', function () { menu.classList.remove('open'); });
+    window.addEventListener('resize', function () { menu.classList.remove('open'); });
+
+    new MutationObserver(sync).observe(selectTunnel, {
+      childList: true,
+      attributes: true,
+      attributeFilter: ['disabled', 'class'],
+    });
+    selectTunnel.addEventListener('change', sync);
+    sync();
+  }());
   presetPills.addEventListener('click', function (e) {
     const btn = e.target.closest('.pill-btn');
     if (!btn) return;
@@ -1170,22 +1228,101 @@
   inputSpeed.addEventListener('change', updateSpeedHint);
   inputDir.addEventListener('change', function () {
     if (!routeActive) return;
-    routeDir = (inputDir.value || 'N').toUpperCase();
+    const v = parseFloat(inputDir.value);
+    routeDir = Number.isFinite(v) ? v : 90;
     restartRouteFrom(currentLat, currentLng);
   });
-  (function initDirCross() {
-    const labels = document.querySelectorAll('.dir-label');
-    function setActive(dir) {
-      labels.forEach(function (g) { g.classList.toggle('active', g.dataset.dir === dir); });
+  (function initCompassDisc() {
+    const svg = document.getElementById('compassSvg');
+    const hoverLine = document.getElementById('compassHoverLine');
+    const confirmedLine = document.getElementById('compassConfirmedLine');
+    const confirmedArrow = document.getElementById('compassConfirmedArrow');
+    let confirmedBearing = parseFloat(inputDir.value) || 90;
+
+    function toRad(deg) { return (deg * Math.PI) / 180; }
+    function svgPt(bearing, r) {
+      return { x: 50 + r * Math.sin(toRad(bearing)), y: 50 - r * Math.cos(toRad(bearing)) };
     }
-    labels.forEach(function (g) {
-      g.addEventListener('click', function () {
-        inputDir.value = g.dataset.dir;
-        setActive(g.dataset.dir);
-        inputDir.dispatchEvent(new Event('change'));
-      });
+
+    // Draw tick marks and cardinal labels
+    for (let a = 0; a < 360; a += 30) {
+      const isCardinal = a % 90 === 0;
+      const p1 = svgPt(a, isCardinal ? 40 : 43);
+      const p2 = svgPt(a, 46.5);
+      const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      tick.setAttribute('x1', p1.x.toFixed(2)); tick.setAttribute('y1', p1.y.toFixed(2));
+      tick.setAttribute('x2', p2.x.toFixed(2)); tick.setAttribute('y2', p2.y.toFixed(2));
+      tick.setAttribute('stroke', isCardinal ? '#71717a' : '#52525b');
+      tick.setAttribute('stroke-width', isCardinal ? '1.5' : '1');
+      svg.insertBefore(tick, hoverLine);
+    }
+    [{ a: 0, t: '北' }, { a: 90, t: '東' }, { a: 180, t: '南' }, { a: 270, t: '西' }].forEach(function (c) {
+      const pos = svgPt(c.a, 34);
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      el.setAttribute('x', pos.x.toFixed(2)); el.setAttribute('y', pos.y.toFixed(2));
+      el.setAttribute('text-anchor', 'middle'); el.setAttribute('dominant-baseline', 'middle');
+      el.setAttribute('class', 'compass-cardinal-text');
+      el.setAttribute('font-size', '7');
+      el.textContent = c.t;
+      svg.insertBefore(el, hoverLine);
     });
-    setActive(inputDir.value || 'E');
+
+    function setConfirmed(bearing) {
+      const lineEnd = svgPt(bearing, 43.5);
+      const arrowPos = svgPt(bearing, 44);
+      confirmedLine.setAttribute('x2', lineEnd.x.toFixed(2)); confirmedLine.setAttribute('y2', lineEnd.y.toFixed(2));
+      confirmedArrow.setAttribute('transform', 'translate(' + arrowPos.x.toFixed(2) + ' ' + arrowPos.y.toFixed(2) + ') rotate(' + bearing.toFixed(1) + ')');
+    }
+    setConfirmed(confirmedBearing);
+
+    function getBearing(e) {
+      const rect = svg.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      return ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+    }
+    function nearCenter(e) {
+      const rect = svg.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      return Math.sqrt(dx * dx + dy * dy) * (100 / rect.width) < 15;
+    }
+    function clearPreview() {
+      hoverLine.setAttribute('opacity', '0');
+      if (dirPreviewLine) { map.removeLayer(dirPreviewLine); dirPreviewLine = null; }
+    }
+    function showMapPreview(bearing) {
+      if (dirPreviewLine) { map.removeLayer(dirPreviewLine); dirPreviewLine = null; }
+      const latRad = (currentLat * Math.PI) / 180;
+      const rad = toRad(bearing);
+      const endLat = currentLat + (2000 * Math.cos(rad)) / 111320;
+      const endLng = currentLng + (2000 * Math.sin(rad)) / (111320 * Math.cos(latRad));
+      dirPreviewLine = L.polyline(
+        [[currentLat, currentLng], [endLat, endLng]],
+        { color: '#FD4C04', dashArray: '8,6', weight: 2, opacity: 0.7 }
+      ).addTo(map);
+    }
+
+    const container = svg.parentElement;
+    container.style.cursor = 'pointer';
+    container.addEventListener('mousemove', function (e) {
+      if (nearCenter(e)) { container.style.cursor = 'default'; clearPreview(); return; }
+      container.style.cursor = 'pointer';
+      const bearing = getBearing(e);
+      const p = svgPt(bearing, 44);
+      hoverLine.setAttribute('x2', p.x.toFixed(2)); hoverLine.setAttribute('y2', p.y.toFixed(2));
+      hoverLine.setAttribute('opacity', '1');
+      showMapPreview(bearing);
+    });
+    container.addEventListener('mouseleave', function () { container.style.cursor = 'pointer'; clearPreview(); });
+    container.addEventListener('click', function (e) {
+      if (nearCenter(e)) return;
+      confirmedBearing = Math.round(getBearing(e));
+      clearPreview();
+      inputDir.value = confirmedBearing;
+      setConfirmed(confirmedBearing);
+      inputDir.dispatchEvent(new Event('change'));
+    });
   }());
 
   var sidebar = document.querySelector('.sidebar');
@@ -1278,7 +1415,7 @@
       { sub: '京都',   tz: 'Asia/Tokyo', lat: 35.0116,    lng: 135.7681    },
       { sub: '大阪',   tz: 'Asia/Tokyo', lat: 34.6937,    lng: 135.5023    },
       { sub: '福岡',   tz: 'Asia/Tokyo', lat: 33.5903,    lng: 130.4017    },
-      { sub: '熊本',   tz: 'Asia/Tokyo', lat: 32.8031,    lng: 130.7079    },
+      { sub: '熊本',   tz: 'Asia/Tokyo', lat: 32.830917,  lng: 130.753556  },
     ]},
     { name: '香港', flag: '🇭🇰', cities: [
       { sub: '香港', tz: 'Asia/Hong_Kong', lat: 22.3193, lng: 114.1694 },
@@ -1300,14 +1437,21 @@
     ]},
     // ── 美洲 ──
     { name: '美國', flag: '🇺🇸', cities: [
+      { sub: '艾德蒙茲', tz: 'America/Los_Angeles', lat: 47.781472, lng: -122.384167 },
       { sub: '科克蘭', tz: 'America/Los_Angeles', lat: 47.684417, lng: -122.251250 },
+      { sub: '喬治城', tz: 'America/Los_Angeles', lat: 47.545861, lng: -122.327139 },
       { sub: '西雅圖', tz: 'America/Los_Angeles', lat: 47.520222, lng: -122.357889 },
-      { sub: '紐約',   tz: 'America/New_York',    lat: 40.7128, lng:  -74.0060 },
+      { sub: '紐約',   tz: 'America/New_York',    lat: 40.720638, lng: -74.000816 },
       { sub: '舊金山', tz: 'America/Los_Angeles', lat: 37.7749, lng: -122.4194 },
     ]},
     // ── 大洋洲 ──
+    { name: '澳洲', flag: '🇦🇺', cities: [
+      { sub: '布里斯本北', tz: 'Australia/Brisbane', lat: -27.352472, lng: 152.990750 },
+      { sub: '布里斯本', tz: 'Australia/Brisbane', lat: -27.447944, lng: 152.975056 },
+      { sub: '坎培拉',   tz: 'Australia/Sydney',   lat: -35.303300, lng: 149.096300 },
+    ]},
     { name: '紐西蘭', flag: '🇳🇿', cities: [
-      { sub: '奧克蘭', tz: 'Pacific/Auckland', lat: -36.8485, lng: 174.7633 },
+      { sub: '奧克蘭', tz: 'Pacific/Auckland', lat: -36.848500, lng: 174.763300 },
       { sub: '威靈頓', tz: 'Pacific/Auckland', lat: -41.2865, lng: 174.7762 },
       { sub: '基督城', tz: 'Pacific/Auckland', lat: -43.5321, lng: 172.6362 },
     ]},

@@ -205,6 +205,49 @@ label[for="selectTunnel"].test-mode-active {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+.custom-select-wrap { position: relative; flex: 1; min-width: 0; }
+.custom-select-trigger {
+  width: 100%;
+  padding: 6px 28px 6px 8px;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: #27272a;
+  color: #e4e4e7;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.custom-select-trigger:focus { outline: none; border-color: #FBD23F; }
+.custom-select-trigger.disabled { cursor: default; background-image: none; padding-right: 8px; }
+.custom-select-menu {
+  position: fixed;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 1200;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: none;
+}
+.custom-select-menu.open { display: block; }
+.custom-select-item {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #e4e4e7;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.custom-select-item:hover { background: #3f3f46; }
+.custom-select-item.selected { color: #FBD23F; }
 .sidebar input::placeholder { color: #71717a; }
 .sidebar input:focus, .sidebar select:focus { outline: none; border-color: #FBD23F; }
 .info-icon { display: inline-flex; align-items: center; color: inherit; cursor: default; vertical-align: middle; }
@@ -215,15 +258,9 @@ label[for="selectTunnel"].test-mode-active {
 .flower-stats-block { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; text-align: center; font-size: 12px; color: #a1a1aa; }
 .flower-coin-max { background: #450a0a; color: #fca5a5; border-radius: 4px; padding: 1px 6px; transition: background 0.2s, color 0.2s; }
 .dir-compass-container { position: relative; width: 230px; height: 230px; }
-.dir-cross-svg { display: block; }
+.dir-compass-svg { display: block; }
 .dir-compass-container .dir-start-btn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.dir-line { stroke: #52525b; stroke-width: 1.2; }
-.dir-diag { stroke: #3f3f46; stroke-width: 0.8; stroke-dasharray: 3 3; }
-.dir-label { cursor: pointer; }
-.dir-label text { fill: #71717a; font-size: 8px; }
-.dir-label-sm text { font-size: 6px; }
-.dir-label:hover text { fill: #e4e4e7; }
-.dir-label.active text { fill: #FD4C04; font-weight: 600; }
+.compass-cardinal-text { fill: #71717a; pointer-events: none; }
 .btn-icon {
   flex-shrink: 0;
   width: 30px;
