@@ -849,11 +849,18 @@
     }
     flowerStatsBlock.style.display = '';
     if (flowerTimerInterval !== null) return;
-    flowerTimerInterval = setInterval(function () {
-      flowerElapsedSeconds++;
+    // 以真實時鐘計算經過秒數，避免 setInterval 漂移／背景節流造成統計偏少
+    const baseMs = Date.now() - flowerElapsedSeconds * 1000;
+    function tick() {
+      flowerElapsedSeconds = Math.floor((Date.now() - baseMs) / 1000);
       updateFlowerTimerDisplay();
       updateFlowerStats();
-    }, 1000);
+    }
+    flowerTimerInterval = setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', function onVis() {
+      if (flowerTimerInterval === null) { document.removeEventListener('visibilitychange', onVis); return; }
+      if (!document.hidden) tick();
+    });
   }
 
   function pauseFlowerTimer() {
@@ -875,29 +882,38 @@
     }
   }
 
-  /** 與 GPX 相同節奏：立即標第一點，之後每秒標下一點（不畫連線） */
+  /** 與 GPX 相同節奏：以真實時鐘對齊索引（timer 漂移或分頁進背景後會自動補上），不畫連線 */
   function startPlaybackAnimation(latlngs, clearPath) {
     stopPlaybackAnimation();
     if (clearPath) playbackLayer.clearLayers();
     if (!latlngs || latlngs.length === 0) return;
-    let i = 0;
+    const startMs = Date.now();
+    let drawn = -1; // 已畫到的索引
     function step() {
-      if (i >= latlngs.length) {
+      const target = Math.min(Math.floor((Date.now() - startMs) / 1000), latlngs.length - 1);
+      // 補畫落後的軌跡點（背景分頁節流後醒來會一次補齊）
+      while (drawn < target) {
+        drawn++;
+        L.circleMarker(latlngs[drawn], RED_DOT_STYLE).addTo(playbackLayer);
+      }
+      const ll = latlngs[target];
+      updateMarker(ll[0], ll[1]);
+      map.panTo(ll);
+      if (target >= latlngs.length - 1) {
         stopPlaybackAnimation();
         setPlayPauseIcon(false);
         routeActive = false;
         paused = false;
         resetFlowerTimer();
-        return;
       }
-      const ll = latlngs[i];
-      L.circleMarker(ll, RED_DOT_STYLE).addTo(playbackLayer);
-      updateMarker(ll[0], ll[1]);
-      map.panTo(ll);
-      i++;
     }
     step();
     playbackTimer = setInterval(step, 1000);
+    // 分頁回到前景時立即校正，不用等下一個 interval
+    document.addEventListener('visibilitychange', function onVis() {
+      if (playbackTimer === null) { document.removeEventListener('visibilitychange', onVis); return; }
+      if (!document.hidden) step();
+    });
   }
 
   // 定時移動：前端產生 GPX，後端只負責寫檔並交 pymobiledevice3 播放
@@ -910,7 +926,7 @@
       return;
     }
     const durationMin = parseFloat(inputDuration.value);
-    const durationSafe = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 60;
+    const durationSafe = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 600;
     const inputDirVal = parseFloat(inputDir.value);
     const bearing = Number.isFinite(inputDirVal) ? inputDirVal : 90;
     const totalSeconds = Math.max(1, Math.floor(durationSafe * 60));
@@ -1293,10 +1309,19 @@
     }
     function showMapPreview(bearing) {
       if (dirPreviewLine) { map.removeLayer(dirPreviewLine); dirPreviewLine = null; }
+      // 長度取「目前位置到可視範圍最遠角落」的距離再放大，確保虛線延伸出螢幕
+      const b = map.getBounds();
+      const origin = L.latLng(currentLat, currentLng);
+      const lengthM = Math.max(
+        origin.distanceTo(b.getNorthWest()),
+        origin.distanceTo(b.getNorthEast()),
+        origin.distanceTo(b.getSouthWest()),
+        origin.distanceTo(b.getSouthEast())
+      ) * 1.2;
       const latRad = (currentLat * Math.PI) / 180;
       const rad = toRad(bearing);
-      const endLat = currentLat + (2000 * Math.cos(rad)) / 111320;
-      const endLng = currentLng + (2000 * Math.sin(rad)) / (111320 * Math.cos(latRad));
+      const endLat = currentLat + (lengthM * Math.cos(rad)) / 111320;
+      const endLng = currentLng + (lengthM * Math.sin(rad)) / (111320 * Math.cos(latRad));
       dirPreviewLine = L.polyline(
         [[currentLat, currentLng], [endLat, endLng]],
         { color: '#FD4C04', dashArray: '8,6', weight: 2, opacity: 0.7 }
