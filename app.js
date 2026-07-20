@@ -890,7 +890,7 @@
     }
   }
 
-  /** 與 GPX 相同節奏：以真實時鐘對齊索引，軌跡以線段延伸顯示 */
+  /** 與 GPX 相同節奏：以真實時鐘對齊索引，軌跡以線段延伸顯示；clearPath=false 時保留既有線段（轉向、暫停後繼續） */
   function startPlaybackAnimation(latlngs, clearPath) {
     stopPlaybackAnimation();
     if (clearPath !== false) playbackLayer.clearLayers();
@@ -1039,7 +1039,7 @@
     if (tunnel.test) {
       setPlayPauseIcon(true);
       startFlowerTimer(false);
-      startPlaybackAnimation(route.latlngs);
+      startPlaybackAnimation(route.latlngs, false);
       return;
     }
     try {
@@ -1055,7 +1055,7 @@
       }
       setPlayPauseIcon(true);
       startFlowerTimer(false);
-      startPlaybackAnimation(route.latlngs);
+      startPlaybackAnimation(route.latlngs, false);
     } catch (e) {
       showStatus(false, '繼續路線失敗');
     }
@@ -1081,7 +1081,7 @@
       stopPlaybackAnimation();
       updateMarker(lat, lng);
       map.setView([lat, lng], map.getZoom());
-      startPlaybackAnimation(route.latlngs);
+      startPlaybackAnimation(route.latlngs, false);
       return;
     }
     try {
@@ -1102,7 +1102,7 @@
       stopPlaybackAnimation();
       updateMarker(lat, lng);
       map.setView([lat, lng], map.getZoom());
-      startPlaybackAnimation(route.latlngs);
+      startPlaybackAnimation(route.latlngs, false);
     } catch (e) {
       showStatus(false, '更新路線失敗');
     }
