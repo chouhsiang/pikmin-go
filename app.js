@@ -45,9 +45,10 @@
     maxZoom: 20,
   }).addTo(map);
   const pathLayer = L.layerGroup().addTo(map); // 手動設點：紅色圓點
-  const playbackLayer = L.layerGroup().addTo(map); // 定時移動：依 GPX 每秒標一個軌跡點（無折線）
+  const playbackLayer = L.layerGroup().addTo(map); // 定時移動：走路軌跡線
 
   let playbackTimer = null;
+  let playbackPolyline = null;
   let flowerTimerInterval = null;
   let flowerElapsedSeconds = 0;
   let testMode = false;
@@ -875,6 +876,13 @@
     flowerStatsBlock.style.display = 'none';
   }
 
+  /** 走路軌跡線樣式（單一 polyline 延伸，避免大量圓點造成卡頓） */
+  const ROUTE_LINE_STYLE = {
+    color: '#b91c1c',
+    weight: 3,
+    opacity: 0.85,
+  };
+
   function stopPlaybackAnimation() {
     if (playbackTimer !== null) {
       clearInterval(playbackTimer);
@@ -882,19 +890,22 @@
     }
   }
 
-  /** 與 GPX 相同節奏：以真實時鐘對齊索引（timer 漂移或分頁進背景後會自動補上），不畫連線 */
+  /** 與 GPX 相同節奏：以真實時鐘對齊索引，軌跡以線段延伸顯示 */
   function startPlaybackAnimation(latlngs, clearPath) {
     stopPlaybackAnimation();
-    if (clearPath) playbackLayer.clearLayers();
+    if (clearPath !== false) playbackLayer.clearLayers();
+    playbackPolyline = null;
     if (!latlngs || latlngs.length === 0) return;
+
+    playbackPolyline = L.polyline([latlngs[0]], ROUTE_LINE_STYLE).addTo(playbackLayer);
+
     const startMs = Date.now();
-    let drawn = -1; // 已畫到的索引
+    let lastTarget = -1;
     function step() {
       const target = Math.min(Math.floor((Date.now() - startMs) / 1000), latlngs.length - 1);
-      // 補畫落後的軌跡點（背景分頁節流後醒來會一次補齊）
-      while (drawn < target) {
-        drawn++;
-        L.circleMarker(latlngs[drawn], RED_DOT_STYLE).addTo(playbackLayer);
+      if (target !== lastTarget && playbackPolyline) {
+        playbackPolyline.setLatLngs(latlngs.slice(0, target + 1));
+        lastTarget = target;
       }
       const ll = latlngs[target];
       updateMarker(ll[0], ll[1]);
@@ -909,7 +920,6 @@
     }
     step();
     playbackTimer = setInterval(step, 1000);
-    // 分頁回到前景時立即校正，不用等下一個 interval
     document.addEventListener('visibilitychange', function onVis() {
       if (playbackTimer === null) { document.removeEventListener('visibilitychange', onVis); return; }
       if (!document.hidden) step();
