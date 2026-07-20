@@ -876,11 +876,11 @@
     flowerStatsBlock.style.display = 'none';
   }
 
-  /** 走路軌跡線樣式（單一 polyline 延伸，避免大量圓點造成卡頓） */
+  /** 走路軌跡線樣式（粗細對齊 RED_DOT_STYLE：radius 6 → 直徑 12px） */
   const ROUTE_LINE_STYLE = {
-    color: '#b91c1c',
-    weight: 3,
-    opacity: 0.85,
+    color: RED_DOT_STYLE.fillColor,
+    weight: RED_DOT_STYLE.radius * 2,
+    opacity: RED_DOT_STYLE.fillOpacity,
   };
 
   function stopPlaybackAnimation() {
